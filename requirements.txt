@@ -1,0 +1,16 @@
+crewai
+langchain
+openai
+chromadb
+sentence-transformers
+spacy
+pdfminer.six
+fastapi
+uvicorn
+python-dotenv
+langchain-community
+together
+python-dotenv
+streamlit
+PyPDF2
+python-docx

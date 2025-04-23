@@ -1,0 +1,7 @@
+Compare the resume to the job description. Give a score out of 100 for how well the resume fits the job. Also, list key missing skills or responsibilities.
+
+Resume:
+{{resume_text}}
+
+Job Description:
+{{jd_text}}

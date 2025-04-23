@@ -1,0 +1,11 @@
+Extract the following information from the resume and return it in structured format:
+
+1. Name
+2. Email
+3. Phone (if available)
+4. Skills
+5. Work Experience
+6. Education
+
+Resume:
+{{resume_text}}

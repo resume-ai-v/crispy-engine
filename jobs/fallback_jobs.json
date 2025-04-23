@@ -1,0 +1,14 @@
+[
+  {
+    "job_title": "Data Analyst - Remote",
+    "employer_name": "Mock Company A",
+    "job_city": "Remote",
+    "job_apply_link": "https://example.com/job1"
+  },
+  {
+    "job_title": "Junior Data Analyst",
+    "employer_name": "Mock Company B",
+    "job_city": "Remote",
+    "job_apply_link": "https://example.com/job2"
+  }
+]

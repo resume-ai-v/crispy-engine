@@ -1,0 +1,7 @@
+You are a smart HR interview assistant. Generate 5-10 interview questions that are relevant to the job description and the resume provided.
+
+Resume:
+{{resume_text}}
+
+Job Description:
+{{jd_text}}
