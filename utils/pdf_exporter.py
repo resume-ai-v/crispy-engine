@@ -1,21 +1,19 @@
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from io import BytesIO
+import io
 
 def text_to_pdf_bytes(text: str) -> bytes:
-    buffer = BytesIO()
-    pdf = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    lines = text.splitlines()
 
-    text_lines = text.split('\n')
-    y = height - 40
-    for line in text_lines:
-        pdf.drawString(40, y, line.strip())
-        y -= 14
+    y = 750
+    for line in lines:
+        c.drawString(30, y, line)
+        y -= 15
         if y < 40:
-            pdf.showPage()
-            y = height - 40
-
-    pdf.save()
+            c.showPage()
+            y = 750
+    c.save()
     buffer.seek(0)
     return buffer.read()

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>📁 Resume Vault</title>
+</head>
+<body>
+
+<h1>📁 Resume Vault (Temporary)</h1>
+
+{% if files %}
+    {% for file in files %}
+        <p>
+            📄 {{ file['name'] }} — Modified: {{ file['modified'] }}
+            [<a href="/download/{{ file['name'] }}">Download</a>]
+            [<a href="/delete/{{ file['name'] }}">Delete</a>]
+        </p>
+    {% endfor %}
+{% else %}
+    <p>No files available.</p>
+{% endif %}
+
+<br><br>
+<a href="/cleanup">🧹 Cleanup Expired Files</a> | <a href="/">🏠 Home</a>
+
+</body>
+</html>

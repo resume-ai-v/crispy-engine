@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>🎯 Career AI Testing UI</title>
+</head>
+<body>
+
+<h1>🎯 Career AI Testing UI</h1>
+
+<form method="post" enctype="multipart/form-data">
+    <h3>Upload Resume (PDF/DOCX)</h3>
+    <input type="file" name="resume_file"><br><br>
+
+    <h3>Paste Resume Text (Optional)</h3>
+    <textarea name="resume" rows="8" cols="80" placeholder="Paste Resume"></textarea><br><br>
+
+    <h3>Upload Job Description (PDF/DOCX)</h3>
+    <input type="file" name="jd_file"><br><br>
+
+    <h3>Or Scrape JD from URL</h3>
+    <input type="url" name="jd_url" placeholder="Paste Job Posting URL"><br><br>
+
+    <h3>Paste Job Description (Optional)</h3>
+    <textarea name="jd" rows="8" cols="80" placeholder="Paste Job Description"></textarea><br><br>
+
+    <input type="text" name="role" placeholder="Job Role">
+    <input type="text" name="company" placeholder="Company"><br><br>
+
+    <button name="action" value="tailor">🛠️ Tailor Resume</button>
+    <button name="action" value="cover_letter">📄 Generate Cover Letter</button>
+    <button name="action" value="match">📈 Match Resume</button>
+    <button name="action" value="questions">🧠 Generate Questions</button>
+</form>
+
+<br><br>
+
+<h2>Result:</h2>
+<pre>{{ result }}</pre>
+
+<br>
+<a href="/vault">📁 View Resume Vault</a>
+
+</body>
+</html>

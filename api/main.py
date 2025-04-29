@@ -91,3 +91,22 @@ def optimize_pipeline(data: ResumeAndJD):
         "interview_questions": questions,
         "cover_letter": cover_letter
     }
+
+@app.post("/cover_letter/")
+def generate_cover_letter(data: ResumeAndJD):
+    # For now, simulate a basic cover letter
+    cover_letter = f"""
+Dear Hiring Manager,
+
+I am excited to apply for the {data.role} role at {data.company}. 
+With experience in areas like those outlined in your job description, I believe I can contribute immediately.
+
+Highlights:
+- {data.resume[:200]}...
+
+I look forward to discussing how I can add value to your team!
+
+Sincerely,  
+[Your Name]
+"""
+    return cover_letter
