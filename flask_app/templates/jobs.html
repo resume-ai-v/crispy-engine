@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Job Listings | Career AI</title>
+</head>
+<body>
+  <h2>Jobs for: {{ role }}</h2>
+  <form method="get" action="/jobs">
+    <input name="role" placeholder="Search role..." value="{{ role }}">
+    <button type="submit">Search</button>
+  </form>
+
+  <hr>
+  {% for job in jobs %}
+    <div style="margin-bottom: 30px;">
+      <h3>{{ job.job_title }} at {{ job.employer_name }}</h3>
+      <p><b>Location:</b> {{ job.job_city or 'Remote' }} | <b>Type:</b> {{ job.job_employment_type }}</p>
+      <p>{{ job.job_description[:400] }}...</p>
+
+      <form method="post" action="/">
+        <input type="hidden" name="jd" value="{{ job.job_description }}">
+        <input type="hidden" name="role" value="{{ job.job_title }}">
+        <input type="hidden" name="company" value="{{ job.employer_name }}">
+        <input type="hidden" name="action" value="tailor">
+        <button type="submit">🎯 Tailor Resume</button>
+      </form>
+
+      <form method="post" action="/">
+        <input type="hidden" name="jd" value="{{ job.job_description }}">
+        <input type="hidden" name="role" value="{{ job.job_title }}">
+        <input type="hidden" name="company" value="{{ job.employer_name }}">
+        <input type="hidden" name="action" value="cover_letter">
+        <button type="submit">✉️ Cover Letter</button>
+      </form>
+
+      <a href="{{ job.job_apply_link }}" target="_blank">🔗 Apply Now</a>
+      <hr>
+    </div>
+  {% endfor %}
+</body>
+</html>

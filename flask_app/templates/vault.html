@@ -8,14 +8,15 @@
 
 <h1>📁 Resume Vault (Temporary)</h1>
 
-{% if files %}
-    {% for file in files %}
-        <p>
-            📄 {{ file['name'] }} — Modified: {{ file['modified'] }}
-            [<a href="/download/{{ file['name'] }}">Download</a>]
-            [<a href="/delete/{{ file['name'] }}">Delete</a>]
-        </p>
-    {% endfor %}
+{% for f in files %}
+  <div class="card my-2 p-2">
+    <b>{{ f.name }}</b><br>
+    🕒 {{ f.modified }}
+    <a class="btn btn-sm btn-primary" href="/download/{{ f.name }}">Download</a>
+    <a class="btn btn-sm btn-danger" href="/delete/{{ f.name }}">Delete</a>
+  </div>
+{% endfor %}
+
 {% else %}
     <p>No files available.</p>
 {% endif %}

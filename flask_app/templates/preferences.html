@@ -1,0 +1,23 @@
+<!-- flask_app/templates/preferences.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Set Your Preferences</title>
+</head>
+<body>
+    <h2>🎯 Set Your Job Preferences</h2>
+    <form method="POST">
+        Role: <input type="text" name="role" required><br><br>
+        Location: <input type="text" name="location" required><br><br>
+        Work Mode:
+        <select name="work_mode" required>
+            <option>Remote</option>
+            <option>Onsite</option>
+            <option>Hybrid</option>
+        </select><br><br>
+        Expected Salary (Optional): <input type="text" name="salary"><br><br>
+        <button type="submit">Save Preferences</button>
+    </form>
+</body>
+</html>
