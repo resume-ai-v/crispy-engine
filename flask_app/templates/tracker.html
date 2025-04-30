@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>📌 Job Tracker</title>
+</head>
+<body>
+    <h1>📌 My Job Application Tracker</h1>
+
+    <form method="POST">
+        <input type="text" name="job" placeholder="Job Title" required>
+        <input type="text" name="company" placeholder="Company" required>
+        <select name="status" required>
+            <option value="Applied">Applied</option>
+            <option value="Interviewing">Interviewing</option>
+            <option value="Offer">Offer</option>
+            <option value="Rejected">Rejected</option>
+        </select>
+        <input type="text" name="note" placeholder="Optional Note">
+        <button type="submit">Add to Tracker</button>
+    </form>
+
+    <hr>
+
+    {% if apps %}
+        <h2>📋 Tracked Applications</h2>
+        <table border="1">
+            <tr>
+                <th>Job Title</th>
+                <th>Company</th>
+                <th>Status</th>
+                <th>Note</th>
+                <th>Date Applied</th>
+            </tr>
+            {% for app in apps %}
+                <tr>
+                    <td>{{ app.job_title }}</td>
+                    <td>{{ app.company }}</td>
+                    <td>{{ app.status }}</td>
+                    <td>{{ app.note }}</td>
+                    <td>{{ app.date_applied.strftime('%Y-%m-%d') }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No applications tracked yet.</p>
+    {% endif %}
+
+    <br>
+    <a href="/">⬅️ Back to Home</a>
+</body>
+</html>
