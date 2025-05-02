@@ -1,27 +1,37 @@
+
+# utils/job_fetcher.py
+
 import requests
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-JSEARCH_API_KEY = "8a5fb61109mshe47ce5d8b9df44dp1e2bf9jsne5d0f209c82a'"
-JSEARCH_API_URL = "jsearch.p.rapidapi.com"
+JSEARCH_API_URL = "https://jsearch.p.rapidapi.com/search"
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY") or "8a5fb61109mshe47ce5d8b9df44dp1e2bf9jsne5d0f209c82a'"
+RAPIDAPI_HOST = "jsearch.p.rapidapi.com"
 
-def fetch_jobs(query, location="United States", num_pages=1):
+def get_jobs_from_jsearch(role="Software Engineer", location="Remote", limit=10):
     headers = {
-        "X-RapidAPI-Key": JSEARCH_API_KEY,
-        "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": RAPIDAPI_HOST
     }
 
     params = {
-        "query": query,
-        "page": "1",
-        "num_pages": num_pages
+        "query": f"{role} in {location}",
+        "num_pages": 1
     }
 
-    try:
-        response = requests.get(JSEARCH_API_URL, headers=headers, params=params)
-        if response.status_code == 200:
-            return response.json().get("data", [])
-        else:
-            print(f"API Error: {response.status_code}")
-            return []
-    except Exception as e:
-        print(f"Fetch Failed: {e}")
-        return []
+    response = requests.get(JSEARCH_API_URL, headers=headers, params=params)
+    data = response.json()
+
+    jobs = []
+    for job in data.get("data", [])[:limit]:
+        jobs.append({
+            "job_title": job.get("job_title"),
+            "employer_name": job.get("employer_name"),
+            "job_city": job.get("job_city", "Remote"),
+            "job_apply_link": job.get("job_apply_link"),
+            "job_description": job.get("job_description", "")
+        })
+
+    return jobs

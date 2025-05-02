@@ -5,23 +5,20 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
 from flask import current_app
+from flask_login import UserMixin
+from flask_sqlalchemy import SQLAlchemy
 
-# Use global DB instance from app
 db = SQLAlchemy()
 
-# === User Table ===
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True, nullable=False)
-
-    # Preferences
+    password = db.Column(db.String(256), nullable=False)
     role_preference = db.Column(db.String(100))
     location_preference = db.Column(db.String(100))
-    work_mode = db.Column(db.String(50))  # e.g., remote, hybrid, on-site
-    salary_expectation = db.Column(db.String(50))  # Optional: "80k-100k"
-
-    # Relationship
-    applications = db.relationship("Application", backref="user", lazy=True)
+    work_mode = db.Column(db.String(50))
+    salary_expectation = db.Column(db.String(50))
+    base_resume = db.Column(db.Text)  # Store raw resume text
 
 # === Job Application Tracking Table ===
 class Application(db.Model):

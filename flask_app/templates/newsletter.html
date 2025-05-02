@@ -1,0 +1,7 @@
+<h3>📰 Job Market Newsletter</h3>
+<ul>
+    {% for item in news %}
+        <li><strong>{{ item.title }}</strong> - {{ item.source }} (<a href="{{ item.link }}" target="_blank">Read more</a>)</li>
+    {% endfor %}
+</ul>
+<a href="/dashboard">⬅ Back</a>
