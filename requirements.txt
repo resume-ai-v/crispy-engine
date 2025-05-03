@@ -14,3 +14,9 @@ python-dotenv
 streamlit
 PyPDF2
 python-docx
+flask
+flask-login
+flask-sqlalchemy
+flask-dance
+beautifulsoup4
+requests-oauthlib

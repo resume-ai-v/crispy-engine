@@ -1,37 +1,28 @@
-
 # utils/job_fetcher.py
 
 import requests
 import os
-from dotenv import load_dotenv
-load_dotenv()
 
+# You can also load from environment securely (especially on Replit)
+JSEARCH_API_KEY = os.getenv("JSEARCH_API_KEY") or "8a5fb61109mshe47ce5d8b9df44dp1e2bf9jsne5d0f209c82a"
 JSEARCH_API_URL = "https://jsearch.p.rapidapi.com/search"
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY") or "8a5fb61109mshe47ce5d8b9df44dp1e2bf9jsne5d0f209c82a'"
-RAPIDAPI_HOST = "jsearch.p.rapidapi.com"
 
-def get_jobs_from_jsearch(role="Software Engineer", location="Remote", limit=10):
+def get_jobs_from_jsearch(query, location="United States", num_pages=1):
     headers = {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": RAPIDAPI_HOST
+        "X-RapidAPI-Key": JSEARCH_API_KEY,
+        "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
     }
 
     params = {
-        "query": f"{role} in {location}",
-        "num_pages": 1
+        "query": f"{query} in {location}",
+        "page": "1",
+        "num_pages": str(num_pages)
     }
 
-    response = requests.get(JSEARCH_API_URL, headers=headers, params=params)
-    data = response.json()
-
-    jobs = []
-    for job in data.get("data", [])[:limit]:
-        jobs.append({
-            "job_title": job.get("job_title"),
-            "employer_name": job.get("employer_name"),
-            "job_city": job.get("job_city", "Remote"),
-            "job_apply_link": job.get("job_apply_link"),
-            "job_description": job.get("job_description", "")
-        })
-
-    return jobs
+    try:
+        response = requests.get(JSEARCH_API_URL, headers=headers, params=params)
+        response.raise_for_status()
+        return response.json().get("data", [])
+    except Exception as e:
+        print(f"Fetch Failed: {e}")
+        return []
