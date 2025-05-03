@@ -1,6 +1,6 @@
 import os
 import sys
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -15,6 +15,8 @@ from utils.scrape_job import scrape_job_posting
 from utils.extract_text import extract_text_from_file
 from utils.job_fetcher import get_jobs_from_jsearch
 from utils.pdf_exporter import text_to_pdf_bytes
+from models.user import db, User
+from utils.news_fetcher import get_newsletter_info
 
 # Flask setup
 app = Flask(__name__)
@@ -27,34 +29,17 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 if not os.path.exists("instance"):
     os.makedirs("instance")
 
-db = SQLAlchemy(app)
+db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
-# ========================
-# User Model & Auth Setup
-# ========================
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(256), nullable=False)
-    role_preference = db.Column(db.String(100))
-    location_preference = db.Column(db.String(100))
-    work_mode = db.Column(db.String(50))
-    salary_expectation = db.Column(db.String(50))
-
+# User loader
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# ===============
-# Backend URL
-# ===============
 API_URL = "http://localhost:8000"
 
-# ============
-# Auth Routes
-# ============
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -74,6 +59,7 @@ def register():
 
     return render_template("register.html")
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -84,6 +70,7 @@ def login():
         flash("Invalid credentials")
     return render_template("login.html")
 
+
 @app.route("/logout")
 @login_required
 def logout():
@@ -91,9 +78,7 @@ def logout():
     flash("👋 Logged out successfully.")
     return redirect("/login")
 
-# ============
-# Main Route
-# ============
+
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def home():
@@ -144,9 +129,7 @@ def home():
 
     return render_template("index.html", result=result, resume=resume, jd=jd, role=role, company=company)
 
-# =====================
-# Preferences and Jobs
-# =====================
+
 @app.route("/preferences", methods=["GET", "POST"])
 @login_required
 def preferences():
@@ -158,8 +141,8 @@ def preferences():
         db.session.commit()
         flash("✅ Preferences updated.")
         return redirect("/jobs")
-
     return render_template("preferences.html")
+
 
 @app.route("/jobs")
 @login_required
@@ -173,25 +156,26 @@ def jobs():
         flash(f"⚠️ Job fetch failed: {e}")
     return render_template("jobs.html", jobs=jobs)
 
-# ====================
-# Vault Management
-# ====================
+
 @app.route("/vault")
 @login_required
 def vault():
     files = get_temp_files()
     return render_template("vault.html", files=files)
 
+
 @app.route("/download/<filename>")
 @login_required
 def download(filename):
     return send_from_directory("/tmp/career_ai_vault", filename, as_attachment=True)
+
 
 @app.route("/delete/<filename>")
 @login_required
 def delete(filename):
     delete_temp_file(filename)
     return redirect("/vault")
+
 
 @app.route("/cleanup")
 @login_required
@@ -200,13 +184,12 @@ def cleanup():
     flash("🧹 Vault cleaned.")
     return redirect("/vault")
 
-from models.user import db, User
-from utils.news_fetcher import get_newsletter_info
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
     return render_template("dashboard.html")
+
 
 @app.route("/resume-editor", methods=["GET", "POST"])
 @login_required
@@ -218,15 +201,15 @@ def resume_editor():
         return redirect("/resume-editor")
     return render_template("resume_editor.html", resume_text=current_user.base_resume or "")
 
+
 @app.route("/newsletter")
 @login_required
 def newsletter():
     news = get_newsletter_info()
     return render_template("newsletter.html", news=news)
 
-# ============
-# Launch App
-# ============
+
+# Run app
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
