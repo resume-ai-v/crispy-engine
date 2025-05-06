@@ -20,3 +20,8 @@ flask-sqlalchemy
 flask-dance
 beautifulsoup4
 requests-oauthlib
+openai
+flask-socketio
+flask-cors
+eventlet
+reportlab

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Interview</title>
+</head>
+<body>
+  <h2>Simulated AI Interview</h2>
+  <label for="role">Select Role:</label>
+  <input type="text" id="role" value="Data Scientist" />
+  <br><br>
+
+  <textarea id="question" placeholder="Type your answer or ask a question..."></textarea>
+  <button onclick="sendToAI()">Send</button>
+
+  <div id="chat"></div>
+
+  <script>
+    async function sendToAI() {
+      const role = document.getElementById("role").value;
+      const question = document.getElementById("question").value;
+      const chatDiv = document.getElementById("chat");
+
+      const res = await fetch("/interview", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ role, question })
+      });
+
+      const data = await res.json();
+      chatDiv.innerHTML += `<p><strong>You:</strong> ${question}</p>`;
+      chatDiv.innerHTML += `<p><strong>AI:</strong> ${data.response}</p>`;
+      document.getElementById("question").value = "";
+    }
+  </script>
+</body>
+</html>

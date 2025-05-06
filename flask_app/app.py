@@ -33,13 +33,13 @@ db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
-# User loader
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 API_URL = "http://localhost:8000"
 
+# === Auth Routes ===
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -59,7 +59,6 @@ def register():
 
     return render_template("register.html")
 
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -70,7 +69,6 @@ def login():
         flash("Invalid credentials")
     return render_template("login.html")
 
-
 @app.route("/logout")
 @login_required
 def logout():
@@ -78,7 +76,7 @@ def logout():
     flash("👋 Logged out successfully.")
     return redirect("/login")
 
-
+# === Main Home Route ===
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def home():
@@ -129,7 +127,7 @@ def home():
 
     return render_template("index.html", result=result, resume=resume, jd=jd, role=role, company=company)
 
-
+# === Preferences ===
 @app.route("/preferences", methods=["GET", "POST"])
 @login_required
 def preferences():
@@ -143,7 +141,6 @@ def preferences():
         return redirect("/jobs")
     return render_template("preferences.html")
 
-
 @app.route("/jobs")
 @login_required
 def jobs():
@@ -156,26 +153,22 @@ def jobs():
         flash(f"⚠️ Job fetch failed: {e}")
     return render_template("jobs.html", jobs=jobs)
 
-
 @app.route("/vault")
 @login_required
 def vault():
     files = get_temp_files()
     return render_template("vault.html", files=files)
 
-
 @app.route("/download/<filename>")
 @login_required
 def download(filename):
     return send_from_directory("/tmp/career_ai_vault", filename, as_attachment=True)
-
 
 @app.route("/delete/<filename>")
 @login_required
 def delete(filename):
     delete_temp_file(filename)
     return redirect("/vault")
-
 
 @app.route("/cleanup")
 @login_required
@@ -184,12 +177,10 @@ def cleanup():
     flash("🧹 Vault cleaned.")
     return redirect("/vault")
 
-
 @app.route("/dashboard")
 @login_required
 def dashboard():
     return render_template("dashboard.html")
-
 
 @app.route("/resume-editor", methods=["GET", "POST"])
 @login_required
@@ -201,15 +192,19 @@ def resume_editor():
         return redirect("/resume-editor")
     return render_template("resume_editor.html", resume_text=current_user.base_resume or "")
 
-
 @app.route("/newsletter")
 @login_required
 def newsletter():
     news = get_newsletter_info()
     return render_template("newsletter.html", news=news)
 
+# === AI Interview Simulation ===
+@app.route("/interview")
+@login_required
+def interview():
+    return render_template("interview.html")  # Add template with avatar interaction UI
 
-# Run app
+# ============ Run App ============
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
