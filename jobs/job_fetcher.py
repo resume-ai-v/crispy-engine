@@ -1,64 +1,27 @@
-from fastapi import APIRouter, Request, Query, HTTPException
-from jobs.job_fetcher import fetch_jobs_from_api
-from ai_agents.jd_matcher.tool import match_resume_to_jd
-import json, re
+# jobs/job_fetcher.py
 
-router = APIRouter()
+import requests
+import os
 
+JSEARCH_API_KEY = os.getenv("JSEARCH_API_KEY") or "your_dummy_key"
+JSEARCH_API_URL = "https://jsearch.p.rapidapi.com/search"
 
-def extract_numeric_score(score_str: str) -> float:
+def fetch_jobs_from_api(query="Data Analyst", location="United States", num_pages=1):
+    headers = {
+        "X-RapidAPI-Key": JSEARCH_API_KEY,
+        "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
+    }
+
+    params = {
+        "query": f"{query} in {location}",
+        "page": "1",
+        "num_pages": str(num_pages)
+    }
+
     try:
-        match = re.search(r"(\d{1,3})", score_str)
-        return float(match.group(1)) if match else 0.0
-    except:
-        return 0.0
-
-
-@router.post("/jobs")
-async def get_filtered_jobs(
-    request: Request,
-    top_n: int = Query(10, ge=1, le=50),
-    h1b_only: bool = Query(False),
-    remote_only: bool = Query(False),
-    fulltime_only: bool = Query(False),
-    location_filter: str = Query("", description="Filter by location (e.g. US)"),
-    company_filter: str = Query("", description="Filter by company (e.g. Google)")
-):
-    """
-    Returns jobs sorted by AI match score with full filtering and ranking support.
-    """
-    try:
-        data = await request.json()
-        resume = data.get("resume", "")
-
-        jobs = fetch_jobs_from_api()
-        enriched_jobs = []
-
-        for job in jobs:
-            jd_text = job.get("jd_text", "")
-            try:
-                raw_score = match_resume_to_jd(resume, jd_text)
-                score_value = extract_numeric_score(raw_score)
-                job["match_score"] = raw_score
-                job["numeric_score"] = score_value
-                enriched_jobs.append(job)
-            except:
-                job["match_score"] = "error"
-                job["numeric_score"] = 0.0
-                enriched_jobs.append(job)
-
-        # Apply filters
-        filtered = [
-            job for job in enriched_jobs
-            if (not h1b_only or job.get("h1b_sponsor", False))
-            and (not remote_only or "remote" in job.get("location", "").lower())
-            and (not fulltime_only or job.get("type", "").lower() == "full time")
-            and (not location_filter or location_filter.lower() in job.get("location", "").lower())
-            and (not company_filter or company_filter.lower() in job.get("company", "").lower())
-        ]
-
-        sorted_jobs = sorted(filtered, key=lambda j: j["numeric_score"], reverse=True)
-        return sorted_jobs[:top_n]
-
+        response = requests.get(JSEARCH_API_URL, headers=headers, params=params)
+        response.raise_for_status()
+        return response.json().get("data", [])
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Fetch Failed: {e}")
+        return []
