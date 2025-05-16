@@ -1,0 +1,18 @@
+[
+  {
+    "title": "Backend Developer",
+    "company": "Spotify",
+    "location": "Remote",
+    "type": "Full Time",
+    "h1b_sponsor": true,
+    "jd_text": "We are looking for a backend developer with Flask and Postgres..."
+  },
+  {
+    "title": "Frontend Engineer",
+    "company": "Netflix",
+    "location": "USA",
+    "type": "Full Time",
+    "h1b_sponsor": false,
+    "jd_text": "Experience with React, TypeScript, and accessibility best practices."
+  }
+]

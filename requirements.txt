@@ -1,0 +1,35 @@
+# Core LLMs and Agents
+openai
+together
+crewai
+langchain
+langchain-community
+chromadb
+sentence-transformers
+spacy
+
+# PDF & Document Handling
+pdfminer.six
+PyPDF2
+python-docx
+reportlab
+
+# Web Frameworks
+fastapi
+uvicorn
+flask
+flask-login
+flask-sqlalchemy
+flask-dance
+flask-cors
+flask-socketio
+eventlet
+
+# Web Scraping and OAuth
+beautifulsoup4
+requests-oauthlib
+requests
+
+# Dev Utilities
+python-dotenv
+streamlit

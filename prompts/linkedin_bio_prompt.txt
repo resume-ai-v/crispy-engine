@@ -1,0 +1,12 @@
+You are a personal branding expert writing a professional LinkedIn summary.
+
+Given the resume below, create a 3–4 sentence LinkedIn “About” section that:
+- Highlights the candidate’s strengths and passions
+- Mentions their current/most recent experience
+- Emphasizes what kind of work they’re seeking
+- Sounds authentic and human
+
+Resume:
+{{resume_text}}
+
+Output a clean LinkedIn-style summary that fits within 300 words, written in first-person (e.g., “I’m a...”).

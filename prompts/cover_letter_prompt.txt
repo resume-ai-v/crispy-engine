@@ -1,0 +1,20 @@
+You are an AI assistant generating a personalized cover letter to help a candidate apply for a job.
+
+Use the resume and job description below to write a concise, compelling cover letter. Tailor the tone to be professional, confident, and enthusiastic.
+
+Candidate Name: {{name}}
+
+Resume:
+{{resume_text}}
+
+Job Description:
+{{jd_text}}
+
+Output a complete cover letter with this structure:
+- Greeting (e.g., “Dear Hiring Manager,” or company-specific if available)
+- Introduction (why the candidate is excited about the role)
+- Body (highlight 2–3 most relevant qualifications or experiences)
+- Conclusion (express interest in interview + thank you)
+- Signature block (use "{{name}}" for now)
+
+Avoid repeating entire resume bullets. Focus on impact.

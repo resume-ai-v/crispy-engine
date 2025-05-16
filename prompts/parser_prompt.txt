@@ -1,0 +1,31 @@
+You are an AI resume parser. Extract structured information from the raw resume text below.
+
+Return the output in the following JSON-like format:
+
+{
+  "name": "Full Name",
+  "email": "Email Address",
+  "phone": "Phone Number",
+  "summary": "Professional Summary",
+  "skills": ["Skill1", "Skill2", "Skill3"],
+  "experience": [
+    {
+      "company": "Company Name",
+      "role": "Job Title",
+      "duration": "Start - End",
+      "description": "Key contributions and technologies used"
+    }
+  ],
+  "education": [
+    {
+      "degree": "Degree Name",
+      "institution": "University Name",
+      "year": "Graduation Year"
+    }
+  ]
+}
+
+Resume Text:
+{{resume_text}}
+
+Extract and return clean structured data.
