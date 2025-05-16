@@ -1,20 +1,21 @@
 # ----------------------------------
-# ✅ FILE: ui/app.py (Streamlit Dev UI)
+# ✅ FILE: ui/app.py (Updated)
 # ----------------------------------
 
 import os
 import sys
 
-from utils.resume.pdf_exporter import text_to_pdf_bytes
-
+# Add project root to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from utils.resume.pdf_exporter import text_to_pdf_bytes
+from utils.system.temp_storage_manager import clean_old_files, get_temp_files, delete_temp_file
+from jobs.job_fetcher import fetch_jobs_from_api
 
 import streamlit as st
 import requests
 from PyPDF2 import PdfReader
 import docx
-from utils.system.temp_storage_manager import clean_old_files, get_temp_files, delete_temp_file
-from jobs.job_fetcher import fetch_jobs_from_api
 
 st.set_page_config(page_title="🎯 Career AI Agent", layout="wide")
 st.title("🎯 Career AI Agent – Dev Panel")
@@ -124,26 +125,6 @@ if st.button("📡 Fetch Jobs"):
 ---
 """)
 
-# Inside st.download_button() usage area:
-st.info("⚠️ Files downloaded from this app will expire from your system in 48 hours. They are also backed up for 60 days on our secure server.")
-
-# Example usage:
+# Resume Download
 file_bytes = text_to_pdf_bytes(resume)
 st.download_button("⬇️ Download Resume", data=file_bytes, file_name="resume_ai.pdf")
-
-# View My Vault tab:
-if st.sidebar.button("📁 View My Vault"):
-    from utils.system.temp_storage_manager import get_temp_files, load_temp_file, delete_temp_file
-    st.subheader("📁 Your Resume Vault (48hr storage)")
-    files = get_temp_files()
-    if files:
-        for file in files:
-            col1, col2 = st.columns([6, 1])
-            with col1:
-                st.markdown(f"**{file['name']}** — _Last Modified_: {file['modified']}")
-                st.download_button("⬇️ Download", load_temp_file(file['name']), file_name=file['name'])
-            with col2:
-                st.button("🗑️", key=file['name'], on_click=delete_temp_file, args=(file['name'],))
-    else:
-        st.info("No resumes saved yet.")
-
