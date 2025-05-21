@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import openai, os, requests, random
-from ai_agents.q_generator.tool import generate_interview_questions
 from data.interview_questions import preset_rounds
 
 load_dotenv()
@@ -16,37 +15,24 @@ class InterviewInput(BaseModel):
     resume: str
     jd: str
     round: str = "HR"
-
 @router.post("/start-interview")
 def start_interview(data: InterviewInput):
     try:
-        # 🎯 Try to generate dynamic AI-based questions
-        try:
-            questions = generate_interview_questions(data.resume, data.jd, data.round)
-        except:
-            questions = random.choice(preset_rounds.get(data.round, []))
+        # Instead of dynamic generation, return static question and answer
+        question = "Tell me about yourself."
+        answer = "Sure! I'm a passionate AI developer with experience in Python, LLMs, and building full-stack AI tools..."
 
-        # 🧠 Follow-up Q&A prompt
-        q_prompt = f"As an interviewer, here's the question: {questions}. Now provide the best model answer."
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": q_prompt}]
-        )
-        answer = response.choices[0].message.content
-
-        audio_url = generate_elevenlabs_audio(answer.strip())
-        video_url = generate_did_video(answer.strip())
+        audio_url = generate_elevenlabs_audio(answer)
+        video_url = generate_did_video(answer)
 
         return {
-            "question": questions.strip(),
-            "answer": answer.strip(),
+            "question": question,
+            "answer": answer,
             "audio_url": audio_url,
             "video_url": video_url
         }
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 def generate_elevenlabs_audio(text):
     try:
