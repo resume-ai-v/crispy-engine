@@ -1,20 +1,31 @@
+# -------------------------------------
+# ✅ FILE: api/resume_api.py
+# -------------------------------------
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
-import openai, os
 from docx import Document
 from io import BytesIO
-from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
+import openai
+import os
 
+from utils.system.temp_storage_manager import load_temp_file
+
+# Load environment variables
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Single APIRouter declaration
 router = APIRouter()
 
+# Request model for resume generation
 class ResumeRequest(BaseModel):
     name: str
     job_description: str
 
+# ✅ Endpoint: Generate Resume (.docx) from AI
 @router.post("/generate-resume")
 def generate_resume(data: ResumeRequest):
     try:
@@ -31,7 +42,7 @@ def generate_resume(data: ResumeRequest):
 
         content = response.choices[0].message.content
 
-        # Generate .docx
+        # Generate .docx resume
         doc = Document()
         doc.add_heading(f"{data.name} - AI Resume", 0)
         for line in content.split("\n"):
@@ -51,16 +62,16 @@ def generate_resume(data: ResumeRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-from fastapi import APIRouter
-from fastapi.responses import FileResponse
-from utils.system.temp_storage_manager import load_temp_file
-import os
-
-router = APIRouter()
-
+# ✅ Endpoint: Download any resume (PDF or DOCX)
 @router.get("/download/{filename}")
 def download_resume(filename: str):
     file_path = f"/tmp/career_ai_vault/{filename}"
     if os.path.exists(file_path):
-        return FileResponse(path=file_path, filename=filename, media_type="application/pdf")
+        media_type = (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            if filename.endswith(".docx")
+            else "application/pdf"
+        )
+        return FileResponse(path=file_path, filename=filename, media_type=media_type)
+
     return {"error": "File not found."}
