@@ -15,7 +15,7 @@ class InterviewInput(BaseModel):
     resume: str
     jd: str
     round: str = "HR"
-@router.post("/start-interview")
+@router.post("/api/start-interview")
 def start_interview(data: InterviewInput):
     try:
         # Instead of dynamic generation, return static question and answer

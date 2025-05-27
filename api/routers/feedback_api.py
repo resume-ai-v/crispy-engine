@@ -14,7 +14,7 @@ class FeedbackRequest(BaseModel):
     jd: str
     user_name: str = "Candidate"
 
-@router.post("/feedback-report")
+@router.post("/api/feedback-report")
 def generate_feedback_report(data: FeedbackRequest):
     feedback = evaluate_answer(data.answer, data.jd)
     pdf_bytes = generate_feedback_pdf(feedback, user_name=data.user_name)

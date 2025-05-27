@@ -19,7 +19,7 @@ class ApplyJobRequest(BaseModel):
     job_title: str
     user_info: dict  # expects {"name": str, "email": str, "phone": str}
 
-@router.post("/apply-to-job")
+@router.post("/api/apply-to-job")
 def apply_to_job(data: ApplyJobRequest):
     try:
         # Step 1: Tailor resume using JD
