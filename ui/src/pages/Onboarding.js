@@ -60,19 +60,35 @@ export default function Onboarding() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const onboardingData = {
       firstStepSelections,
       educationStatus,
       fieldOfStudy,
-      skills,
-      resume,
-      preferredRoles,
+      skills: skills.map(s => s.value),
+      resumeName: resume?.name || "No resume",
+      preferredRoles: preferredRoles.map(r => r.value),
       employmentTypes,
-      preferredCities,
+      preferredCities: preferredCities.map(c => c.value),
     };
-    localStorage.setItem('onboardingData', JSON.stringify(onboardingData));
-    setShowModal(true);
+
+    try {
+      const res = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(onboardingData),
+      });
+
+      const result = await res.json();
+      if (result.status === "success") {
+        setShowModal(true);
+      } else {
+        alert("Something went wrong while saving your onboarding info.");
+      }
+    } catch (error) {
+      console.error("Onboarding submit error:", error);
+      alert("Failed to save onboarding data.");
+    }
   };
 
   return (
@@ -163,7 +179,7 @@ export default function Onboarding() {
               isMulti
               options={skillsOptions}
               value={skills}
-              onChange={(selected) => setSkills(selected)}
+              onChange={setSkills}
               className="basic-multi-select"
               classNamePrefix="select"
               placeholder="Select Skills"

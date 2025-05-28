@@ -2,14 +2,9 @@ import React, { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import {
   uploadResume,
-  generateResume
-} from "../utils/api"; // centralized API functions
-
-import {
-  matchResumeToJD,
-  tailorResumeWithAI
+  generateResume,
+  tailorResumeWithAI,
 } from "../utils/api";
-
 
 export default function AIResume() {
   const [resumeURL, setResumeURL] = useState("");
@@ -54,6 +49,28 @@ export default function AIResume() {
     }
   };
 
+  const handleTailor = async () => {
+    const resumeText = localStorage.getItem("resumeText");
+    if (!resumeText || !jobDesc) {
+      alert("❌ Please upload a resume and enter a job description first.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { tailored_resume } = await tailorResumeWithAI(resumeText, jobDesc);
+      const blob = new Blob([tailored_resume], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      setResumeURL(url);
+      alert("✅ Resume tailored successfully!");
+    } catch (err) {
+      console.error("Tailoring failed:", err);
+      alert("❌ Failed to tailor resume.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar active="resume" />
@@ -77,14 +94,17 @@ export default function AIResume() {
         </div>
 
         <div className="grid grid-cols-3 gap-8">
+          {/* LEFT PANEL */}
           <div className="col-span-1 bg-white p-4 rounded shadow h-full">
             <div className="text-lg font-medium text-gray-700 border-b pb-2 mb-2">Resume Actions</div>
 
+            {/* Upload Resume */}
             <div className="mb-4">
               <label className="block text-sm text-gray-600 mb-1">Upload Resume</label>
               <input type="file" onChange={handleUpload} className="text-sm" />
             </div>
 
+            {/* Generate Resume */}
             <div className="mb-4">
               <label className="block text-sm text-gray-600 mb-1">Your Name</label>
               <input
@@ -112,8 +132,30 @@ export default function AIResume() {
             >
               {loading ? "Generating..." : "Generate AI Resume"}
             </button>
+
+            {/* Tailor Resume */}
+            <div className="mt-6 border-t pt-4">
+              <div className="text-md font-medium text-gray-700 mb-2">Tailor Resume to Job</div>
+
+              <textarea
+                rows={5}
+                placeholder="Paste job description here..."
+                value={jobDesc}
+                onChange={(e) => setJobDesc(e.target.value)}
+                className="w-full border px-2 py-1 text-sm rounded mb-3"
+              ></textarea>
+
+              <button
+                onClick={handleTailor}
+                disabled={loading}
+                className="w-full bg-purple-600 text-white py-2 rounded shadow hover:bg-purple-700"
+              >
+                {loading ? "Tailoring..." : "Tailor My Resume"}
+              </button>
+            </div>
           </div>
 
+          {/* RIGHT PANEL */}
           <div className="col-span-2 bg-white p-6 rounded shadow min-h-[80vh]">
             {resumeURL ? (
               <iframe

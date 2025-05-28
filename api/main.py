@@ -1,10 +1,11 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request, Body
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 import os
 
+from ai_agents.resume_tailor.tool import tailor_resume
 from utils.resume.pdf_exporter import text_to_pdf_bytes
 from utils.system.temp_storage_manager import save_temp_file, load_temp_file
 from utils.system.notify_user import notify_missing_fields
@@ -19,15 +20,14 @@ load_dotenv()
 
 app = FastAPI(title="Career AI Dev API")
 
-# ✅ Include submodules
+# ✅ Routers
 from api.routers.resume_api import router as resume_router
 from api.routers.feedback_api import router as feedback_router
 from api.routers.jobs_api import router as jobs_router
 from api.routers.interview_api import router as interview_router
 from api.routers.apply_api import router as apply_router
-from api.routers.jobs_api import router as jobs_router
+
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
-app.include_router(jobs_router)
 
 app.include_router(resume_router)
 app.include_router(feedback_router)
@@ -60,7 +60,7 @@ class ApplicationData(BaseModel):
 def root():
     return {"message": "Career AI backend is live!"}
 
-# ✅ OTHER REMAINING CORE ENDPOINTS
+# ✅ CORE ENDPOINTS
 @app.post("/match")
 def match(data: ResumeAndJD):
     return {"match_score": match_resume_to_jd(data.resume, data.jd)}
@@ -98,3 +98,9 @@ def apply_job(data: ApplicationData):
     missing = ["email"]
     notify_missing_fields(data.phone_number, data.role, missing)
     return {"status": "resume tailored & user notified", "file": filename, "missing": missing}
+
+# ✅ NEW: Onboarding Endpoint
+@app.post("/onboarding")
+async def save_onboarding(request: Request, data: dict = Body(...)):
+    request.session["onboarding"] = data
+    return {"status": "success", "message": "Onboarding data saved in session"}

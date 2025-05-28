@@ -1,3 +1,4 @@
+// src/pages/Login.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -5,13 +6,28 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleLogin = (e) => {
     e.preventDefault();
 
-    // Simulated login: store user email only
-    localStorage.setItem('loggedInUser', email);
+    // Simulated authentication using localStorage
+    const storedUser = JSON.parse(localStorage.getItem('user'));
 
+    if (!storedUser || storedUser.email !== email) {
+      setError('⚠️ Email not registered.');
+      return;
+    }
+
+    if (!password || password.length < 4) {
+      setError('⚠️ Invalid password.');
+      return;
+    }
+
+    // ✅ Save session state
+    localStorage.setItem('loggedInUser', email);
+    localStorage.setItem('userFullName', `${storedUser.firstName} ${storedUser.lastName}`);
+    setError('');
     navigate('/onboarding');
   };
 
@@ -39,6 +55,8 @@ export default function Login() {
             required
             className="w-full border px-4 py-2 rounded"
           />
+
+          {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <button
             type="submit"

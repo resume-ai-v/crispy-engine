@@ -1,11 +1,14 @@
+// src/pages/RecommendedJobs.js
 import React, { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import JobCard from "../components/JobCard";
 import UserDropdown from "../components/UserDropdown";
+import { useNavigate } from "react-router-dom";
 
 export default function RecommendedJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const resumeText = localStorage.getItem("resumeText");
 
@@ -19,8 +22,8 @@ export default function RecommendedJobs() {
         });
 
         const data = await res.json();
-        if (Array.isArray(data.jobs)) {
-          setJobs(data.jobs);
+        if (Array.isArray(data)) {
+          setJobs(data);
         } else {
           console.error("Invalid jobs format:", data);
         }
@@ -50,15 +53,16 @@ export default function RecommendedJobs() {
           <p className="text-gray-600">No jobs found.</p>
         ) : (
           <div className="grid gap-4">
-            {jobs.map((job, index) => (
+            {jobs.map((job) => (
               <JobCard
-                key={index}
+                key={job.id}
                 title={job.title}
                 company={job.company}
                 location={job.location}
                 salary={job.salary || "Not specified"}
                 match={`${job.match_percentage || "0"}% Match`}
                 posted={job.posted || "Recently"}
+                onClick={() => navigate(`/job/${job.id}`)} // 👈 Navigate to detail view
               />
             ))}
           </div>

@@ -9,6 +9,9 @@ import Settings from './pages/Settings';
 import Help from './pages/Help';
 import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
+import JobDetailView from "./pages/JobDetailView";
+
+
 
 function App() {
   return (
@@ -24,6 +27,7 @@ function App() {
         <Route path="/help" element={<Help />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/edit-profile" element={<EditProfile />} />
+        <Route path="/job/:id" element={<JobDetailView />} />
       </Routes>
     </Router>
   );

@@ -1,3 +1,4 @@
+// src/pages/Signup.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,16 +14,29 @@ export default function Signup() {
   const handleSignup = (e) => {
     e.preventDefault();
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (!email.includes('@')) {
+      setError('⚠️ Invalid email address');
       return;
     }
 
-    // Save user data in localStorage
+    if (password.length < 4) {
+      setError('⚠️ Password must be at least 4 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('⚠️ Passwords do not match');
+      return;
+    }
+
+    const userData = { firstName, lastName, email };
+
+    // Store in localStorage
+    localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('userFullName', `${firstName} ${lastName}`);
     localStorage.setItem('loggedInUser', email);
-    localStorage.setItem('user', JSON.stringify({ firstName, lastName, email }));
 
+    setError('');
     navigate('/onboarding');
   };
 
