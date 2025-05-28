@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 import os
 
+from api.routers.auth_api import router as auth_router
 from ai_agents.resume_tailor.tool import tailor_resume
 from utils.resume.pdf_exporter import text_to_pdf_bytes
 from utils.system.temp_storage_manager import save_temp_file, load_temp_file
@@ -34,6 +35,7 @@ app.include_router(feedback_router)
 app.include_router(jobs_router)
 app.include_router(interview_router)
 app.include_router(apply_router)
+app.include_router(auth_router)
 
 # ✅ MODELS
 class ResumeAndJD(BaseModel):
