@@ -11,7 +11,7 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
 
     if (!email.includes('@')) {
@@ -29,15 +29,31 @@ export default function Signup() {
       return;
     }
 
-    const userData = { firstName, lastName, email };
+    try {
+      const response = await fetch("https://crispy-engine.onrender.com/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // Store in localStorage
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('userFullName', `${firstName} ${lastName}`);
-    localStorage.setItem('loggedInUser', email);
+      const data = await response.json();
 
-    setError('');
-    navigate('/onboarding');
+      if (!response.ok) {
+        setError(`❌ ${data.detail || "Signup failed"}`);
+        return;
+      }
+
+      // Save user details to localStorage (optional)
+      const userData = { firstName, lastName, email };
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('userFullName', `${firstName} ${lastName}`);
+      localStorage.setItem('loggedInUser', email);
+
+      setError('');
+      navigate('/onboarding');
+    } catch (err) {
+      setError('❌ Server error. Please try again.');
+    }
   };
 
   return (
