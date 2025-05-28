@@ -1,7 +1,7 @@
-// src/pages/AIInterviewPractice.js
 import React, { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import UserDropdown from "../components/UserDropdown";
+import { fetchInterviewQuestions, evaluateAnswer as evaluateAnswerAPI } from "../utils/api";
 
 export default function AIInterviewPractice() {
   const [questions, setQuestions] = useState([]);
@@ -15,13 +15,7 @@ export default function AIInterviewPractice() {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/generate-questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume: resumeText }),
-      });
-
-      const data = await res.json();
+      const data = await fetchInterviewQuestions(resumeText);
       if (Array.isArray(data.questions)) {
         setQuestions(data.questions);
       } else {
@@ -29,7 +23,7 @@ export default function AIInterviewPractice() {
       }
     } catch (err) {
       console.error("Error fetching questions:", err);
-      alert("❌ Something went wrong.");
+      alert("❌ Something went wrong while fetching questions.");
     } finally {
       setLoading(false);
     }
@@ -40,20 +34,11 @@ export default function AIInterviewPractice() {
 
     setLoading(true);
     try {
-      const res = await fetch("/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jd: selectedQuestion,
-          answer: currentAnswer,
-        }),
-      });
-
-      const data = await res.json();
+      const data = await evaluateAnswerAPI(selectedQuestion, currentAnswer);
       setFeedback(data.feedback || "No feedback returned.");
     } catch (err) {
       console.error("Error evaluating answer:", err);
-      alert("❌ Something went wrong.");
+      alert("❌ Something went wrong during evaluation.");
     } finally {
       setLoading(false);
     }

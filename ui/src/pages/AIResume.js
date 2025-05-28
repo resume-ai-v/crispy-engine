@@ -137,14 +137,6 @@ export default function AIResume() {
             <div className="mt-6 border-t pt-4">
               <div className="text-md font-medium text-gray-700 mb-2">Tailor Resume to Job</div>
 
-              <textarea
-                rows={5}
-                placeholder="Paste job description here..."
-                value={jobDesc}
-                onChange={(e) => setJobDesc(e.target.value)}
-                className="w-full border px-2 py-1 text-sm rounded mb-3"
-              ></textarea>
-
               <button
                 onClick={handleTailor}
                 disabled={loading}

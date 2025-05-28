@@ -1,24 +1,25 @@
-// src/pages/RecommendedJobs.js
 import React, { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import JobCard from "../components/JobCard";
 import UserDropdown from "../components/UserDropdown";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = process.env.REACT_APP_API_BASE || ""; // 🔧 Picks from .env
+
 export default function RecommendedJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const resumeText = localStorage.getItem("resumeText");
+  const resumeText = localStorage.getItem("resumeText") || "";
 
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const res = await fetch("/api/jobs", {
+        const res = await fetch(`${API_BASE}/api/jobs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resume: resumeText || "" }),
+          body: JSON.stringify({ resume: resumeText }),
         });
 
         const data = await res.json();
@@ -50,7 +51,7 @@ export default function RecommendedJobs() {
         {loading ? (
           <p className="text-gray-600">Loading jobs...</p>
         ) : jobs.length === 0 ? (
-          <p className="text-gray-600">No jobs found.</p>
+          <p className="text-gray-600">No jobs found. Try uploading or generating a resume.</p>
         ) : (
           <div className="grid gap-4">
             {jobs.map((job) => (
@@ -62,7 +63,7 @@ export default function RecommendedJobs() {
                 salary={job.salary || "Not specified"}
                 match={`${job.match_percentage || "0"}% Match`}
                 posted={job.posted || "Recently"}
-                onClick={() => navigate(`/job/${job.id}`)} // 👈 Navigate to detail view
+                onClick={() => navigate(`/job/${job.id}`)}
               />
             ))}
           </div>
