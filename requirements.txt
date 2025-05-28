@@ -32,4 +32,6 @@ requests
 
 # Dev Utilities
 python-dotenv
-streamlit
+streamlitpython-multipart
+
+
