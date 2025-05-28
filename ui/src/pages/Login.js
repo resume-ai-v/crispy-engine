@@ -8,27 +8,37 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // Simulated authentication using localStorage
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-
-    if (!storedUser || storedUser.email !== email) {
-      setError('⚠️ Email not registered.');
+    if (!email || !password) {
+      setError('⚠️ Please enter both email and password.');
       return;
     }
 
-    if (!password || password.length < 4) {
-      setError('⚠️ Invalid password.');
-      return;
-    }
+    try {
+      const response = await fetch("https://crispy-engine.onrender.com/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // ✅ Save session state
-    localStorage.setItem('loggedInUser', email);
-    localStorage.setItem('userFullName', `${storedUser.firstName} ${storedUser.lastName}`);
-    setError('');
-    navigate('/onboarding');
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(`❌ ${data.detail || "Login failed"}`);
+        return;
+      }
+
+      // ✅ Save session state
+      localStorage.setItem('loggedInUser', email);
+      localStorage.setItem('userFullName', data.fullName || email); // update if backend returns name
+
+      setError('');
+      navigate('/onboarding');
+    } catch (err) {
+      setError('❌ Server error. Please try again.');
+    }
   };
 
   return (
