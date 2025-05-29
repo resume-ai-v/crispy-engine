@@ -32,19 +32,15 @@ export default function Onboarding() {
   const [showModal, setShowModal] = useState(false);
 
   const handleCheckboxToggle = (value) => {
-    if (firstStepSelections.includes(value)) {
-      setFirstStepSelections(firstStepSelections.filter((item) => item !== value));
-    } else {
-      setFirstStepSelections([...firstStepSelections, value]);
-    }
+    setFirstStepSelections(prev =>
+      prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]
+    );
   };
 
   const handleEmploymentTypeToggle = (value) => {
-    if (employmentTypes.includes(value)) {
-      setEmploymentTypes(employmentTypes.filter((type) => type !== value));
-    } else {
-      setEmploymentTypes([...employmentTypes, value]);
-    }
+    setEmploymentTypes(prev =>
+      prev.includes(value) ? prev.filter((type) => type !== value) : [...prev, value]
+    );
   };
 
   const handleFileUpload = (e) => {
@@ -73,21 +69,24 @@ export default function Onboarding() {
     };
 
     try {
-      const res = await fetch("/api/onboarding", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/onboarding`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(onboardingData),
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include", // ⚠️ IMPORTANT: Enables session middleware support
+        body: JSON.stringify(onboardingData)
       });
 
       const result = await res.json();
-      if (result.status === "success") {
+      if (res.ok && result.status === "success") {
         setShowModal(true);
       } else {
         alert("Something went wrong while saving your onboarding info.");
       }
     } catch (error) {
-      console.error("Onboarding submit error:", error);
-      alert("Failed to save onboarding data.");
+      console.error("Onboarding error:", error);
+      alert("❌ Server error. Please try again.");
     }
   };
 
@@ -180,8 +179,6 @@ export default function Onboarding() {
               options={skillsOptions}
               value={skills}
               onChange={setSkills}
-              className="basic-multi-select"
-              classNamePrefix="select"
               placeholder="Select Skills"
             />
             <div className="mt-4">
@@ -207,8 +204,6 @@ export default function Onboarding() {
               options={jobRolesOptions}
               value={preferredRoles}
               onChange={setPreferredRoles}
-              className="basic-multi-select"
-              classNamePrefix="select"
               placeholder="Select Preferred Job Roles"
             />
 
@@ -233,8 +228,6 @@ export default function Onboarding() {
               options={citiesOptions}
               value={preferredCities}
               onChange={setPreferredCities}
-              className="basic-multi-select"
-              classNamePrefix="select"
               placeholder="Select Preferred Cities"
             />
           </div>
