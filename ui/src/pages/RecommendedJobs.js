@@ -1,74 +1,75 @@
-import React, { useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
-import JobCard from "../components/JobCard";
-import UserDropdown from "../components/UserDropdown";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { fetchJobs } from "../utils/api";
 
-const API_BASE = process.env.REACT_APP_API_BASE || ""; // 🔧 Picks from .env
+const FILTER_OPTIONS = [
+  { label: "Top Matched", value: "top" },
+  { label: "Most Recent", value: "recent" },
+];
 
 export default function RecommendedJobs() {
   const [jobs, setJobs] = useState([]);
+  const [filter, setFilter] = useState("top");
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const resume = localStorage.getItem("resumeText");
 
-  const resumeText = localStorage.getItem("resumeText") || "";
+  const loadJobs = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchJobs({ resume, sort_by: filter });
+      setJobs(response || []);
+    } catch (error) {
+      console.error("Failed to load jobs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/jobs`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resume: resumeText }),
-        });
-
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setJobs(data);
-        } else {
-          console.error("Invalid jobs format:", data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch jobs:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchJobs();
-  }, []);
+    if (resume) loadJobs();
+  }, [filter]);
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar active="recommended-jobs" />
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Recommended Jobs</h1>
 
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Recommended Jobs</h1>
-          <UserDropdown />
+        {/* 🔽 Filter Dropdown */}
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="border border-gray-300 rounded px-3 py-1 text-sm"
+        >
+          {FILTER_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {loading ? (
+        <div>Loading jobs...</div>
+      ) : jobs.length === 0 ? (
+        <div>No jobs found.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {jobs.map((job) => (
+            <div key={job.id} className="bg-white p-4 rounded shadow">
+              <h2 className="font-semibold">{job.title}</h2>
+              <p className="text-sm text-gray-600">{job.company} • {job.location}</p>
+              {job.match_score && (
+                <p className="text-xs text-purple-700 mt-1">{job.match_score}% match</p>
+              )}
+              <a
+                href={`/job-detail/${job.id}`}
+                className="inline-block mt-3 text-sm text-blue-600 hover:underline"
+              >
+                View Details →
+              </a>
+            </div>
+          ))}
         </div>
-
-        {loading ? (
-          <p className="text-gray-600">Loading jobs...</p>
-        ) : jobs.length === 0 ? (
-          <p className="text-gray-600">No jobs found. Try uploading or generating a resume.</p>
-        ) : (
-          <div className="grid gap-4">
-            {jobs.map((job) => (
-              <JobCard
-                key={job.id}
-                title={job.title}
-                company={job.company}
-                location={job.location}
-                salary={job.salary || "Not specified"}
-                match={`${job.match_percentage || "0"}% Match`}
-                posted={job.posted || "Recently"}
-                onClick={() => navigate(`/job/${job.id}`)}
-              />
-            ))}
-          </div>
-        )}
-      </main>
+      )}
     </div>
   );
 }

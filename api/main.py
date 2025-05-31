@@ -1,30 +1,31 @@
-from fastapi import FastAPI, UploadFile, File, Request, Body
+from fastapi import FastAPI, UploadFile, File, Request, Body, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 
-# Load environment variables
+# ✅ Load environment variables
 load_dotenv()
 
-# Initialize app
+# ✅ Initialize FastAPI app
 app = FastAPI(title="Career AI Dev API")
 
-# ✅ Add CORS middleware
+# ✅ Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Replace with your frontend URL in production
+    allow_origins=["http://localhost:3000"],  # Change this to frontend URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ Session middleware
+# ✅ Enable Session support
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
 
-# ✅ Import and include routers
+# ✅ Include API routers
 from api.routers.auth_api import router as auth_router
 from api.routers.resume_api import router as resume_router
 from api.routers.feedback_api import router as feedback_router
@@ -39,7 +40,7 @@ app.include_router(jobs_router)
 app.include_router(interview_router)
 app.include_router(apply_router)
 
-# ✅ AI logic and tools
+# ✅ AI tools and helpers
 from ai_agents.resume_tailor.tool import tailor_resume
 from ai_agents.jd_matcher.tool import match_resume_to_jd
 from ai_agents.feedback_agent.tool import evaluate_answer
@@ -50,7 +51,7 @@ from utils.system.temp_storage_manager import save_temp_file
 from utils.system.notify_user import notify_missing_fields
 from utils.resume.extract_text import extract_text_from_file
 
-# ✅ Pydantic models
+# ✅ Pydantic input models
 class ResumeAndJD(BaseModel):
     resume: str
     jd: str
@@ -70,34 +71,58 @@ class ApplicationData(BaseModel):
     role: str = "Job"
     company: str = "Company"
 
-# ✅ Root health check
+# ✅ Health check
 @app.get("/")
 def root():
     return {"message": "Career AI backend is live!"}
 
-# ✅ Functional Endpoints
+# ✅ Resume & JD Match
 @app.post("/match")
 def match(data: ResumeAndJD):
-    return {"match_score": match_resume_to_jd(data.resume, data.jd)}
+    try:
+        score = match_resume_to_jd(data.resume, data.jd)
+        return {"match_score": score}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+# ✅ Resume Text Parsing
 @app.post("/parse-resume")
 def parse_resume_text(data: ResumeAndJD):
-    return {"parsed": parse_resume(data.resume)}
+    try:
+        return {"parsed": parse_resume(data.resume)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+# ✅ File Upload Parsing
 @app.post("/parse-upload")
 def parse_resume_upload(file: UploadFile = File(...)):
-    content = extract_text_from_file(file.file, file.filename)
-    return {"parsed": parse_resume(content)}
+    try:
+        content = extract_text_from_file(file.file, file.filename)
+        return {"parsed": parse_resume(content)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/evaluate")
+# ✅ Answer Evaluation
+@app.post("/api/evaluate")
 def evaluate_answer_route(data: AnswerInput):
-    return {"feedback": evaluate_answer(data.answer, data.jd)}
+    try:
+        if not data.answer or not data.jd:
+            raise HTTPException(status_code=422, detail="Missing answer or JD in request body.")
+        feedback = evaluate_answer(data.answer, data.jd)
+        return {"feedback": feedback}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+# ✅ JD Scraper
 @app.get("/scrape")
 def scrape(url: str):
-    jd, role, company = scrape_job_posting(url)
-    return {"jd": jd, "role": role, "company": company}
+    try:
+        jd, role, company = scrape_job_posting(url)
+        return {"jd": jd, "role": role, "company": company}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+# ✅ Resume PDF Download
 @app.get("/download/{filename}")
 def download_file(filename: str):
     file_path = f"/tmp/career_ai_vault/{filename}"
@@ -105,20 +130,35 @@ def download_file(filename: str):
         return FileResponse(file_path, filename=filename, media_type="application/pdf")
     return {"error": "File not found."}
 
+# ✅ Smart Job Application
 @app.post("/apply-smart")
 def apply_job(data: ApplicationData):
-    tailored_resume = tailor_resume(data.resume, data.jd)
-    pdf = text_to_pdf_bytes(tailored_resume)
-    filename = save_temp_file(pdf, data.role, data.company, "resume")
-    notify_missing_fields(data.phone_number, data.role, ["email"])
-    return {
-        "status": "resume tailored & user notified",
-        "file": filename,
-        "missing": ["email"]
-    }
+    try:
+        tailored_resume = tailor_resume(data.resume, data.jd)
+        pdf = text_to_pdf_bytes(tailored_resume)
+        filename = save_temp_file(pdf, data.role, data.company, "resume")
+        notify_missing_fields(data.phone_number, data.role, ["email"])  # Optional
+        return {
+            "status": "resume tailored & user notified",
+            "file": filename,
+            "missing": ["email"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ Onboarding session endpoint
+# ✅ Onboarding session
 @app.post("/onboarding")
 async def save_onboarding(request: Request, data: dict = Body(...)):
-    request.session["onboarding"] = data
-    return {"status": "success", "message": "Onboarding data saved in session"}
+    try:
+        request.session["onboarding"] = data
+        return {"status": "success", "message": "Onboarding data saved in session"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ✅ Serve static files (audio, resume, etc.)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ✅ Database init
+from api.extensions.db import Base, engine
+from api.models.user import User
+Base.metadata.create_all(bind=engine)

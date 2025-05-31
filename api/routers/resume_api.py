@@ -10,7 +10,6 @@ from utils.resume.pdf_exporter import text_to_pdf_bytes
 from docx import Document
 from io import BytesIO
 import os
-
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -31,7 +30,6 @@ async def upload_resume(request: Request, file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # -----------------------------
 # 2️⃣ Retrieve Stored Resume
 # -----------------------------
@@ -42,9 +40,8 @@ async def get_resume(request: Request):
         return {"message": "No resume found in session."}
     return {"resume": resume}
 
-
 # -----------------------------
-# 3️⃣ AI Resume Generator
+# 3️⃣ AI Resume Generator (DOCX download)
 # -----------------------------
 class ResumeRequest(BaseModel):
     name: str
@@ -65,9 +62,8 @@ async def generate_resume(request: Request, data: ResumeRequest):
         )
 
         content = response.choices[0].message.content
-        request.session["resume"] = content  # Store generated resume in session
+        request.session["resume"] = content
 
-        # Generate DOCX
         doc = Document()
         doc.add_heading(f"{data.name} - AI Resume", 0)
         for line in content.split("\n"):
@@ -86,7 +82,6 @@ async def generate_resume(request: Request, data: ResumeRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # -----------------------------
 # 4️⃣ Download Resume (DOCX / PDF)
@@ -119,4 +114,37 @@ def download_pdf(data: FinalResume):
         headers={"Content-Disposition": f"attachment; filename={data.file_name}.pdf"}
     )
 
-#I did this for showing how git works
+# -----------------------------
+# 5️⃣ Tailor Resume Using GPT (New Endpoint)
+# -----------------------------
+class TailorRequest(BaseModel):
+    resume: str
+    jd: str
+    role: str = "Job"
+    company: str = "Company"
+
+@router.post("/api/tailor")
+def tailor_resume_endpoint(data: TailorRequest):
+    try:
+        prompt = f"""
+        Improve and tailor the following resume to match this job description for the role of {data.role} at {data.company}.
+
+        --- JOB DESCRIPTION ---
+        {data.jd}
+
+        --- ORIGINAL RESUME ---
+        {data.resume}
+
+        Return only the improved resume text with no explanation.
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        tailored_resume = response.choices[0].message.content
+        return {"tailored_resume": tailored_resume}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to tailor resume: {str(e)}")

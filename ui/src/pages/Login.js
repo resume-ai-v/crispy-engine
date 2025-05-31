@@ -1,4 +1,3 @@
-// src/pages/Login.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,7 +16,7 @@ export default function Login() {
     }
 
     try {
-      const response = await fetch("https://crispy-engine.onrender.com/login", {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -30,10 +29,8 @@ export default function Login() {
         return;
       }
 
-      // ✅ Save session state
       localStorage.setItem('loggedInUser', email);
-      localStorage.setItem('userFullName', data.fullName || email); // update if backend returns name
-
+      localStorage.setItem('userFullName', data.full_name || email);
       setError('');
       navigate('/onboarding');
     } catch (err) {

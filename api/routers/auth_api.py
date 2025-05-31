@@ -1,32 +1,27 @@
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from api.extensions.db import get_db
-from api.extensions.hashing import Hasher
 from api.models.user import User
+from api.extensions.hashing import Hasher
+from pydantic import BaseModel
 
 router = APIRouter()
 
-class UserSignup(BaseModel):
-    email: EmailStr
-    password: str
-
-class UserLogin(BaseModel):
-    email: EmailStr
+class SignupModel(BaseModel):
+    full_name: str
+    email: str
     password: str
 
 @router.post("/signup")
-def signup(user: UserSignup, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == user.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-    new_user = User(email=user.email, password_hash=Hasher.get_password_hash(user.password))
-    db.add(new_user)
-    db.commit()
-    return {"status": "success", "message": "User created"}
+def signup(user: SignupModel, db: Session = Depends(get_db)):
+    # 🔐 CHECK IF EMAIL ALREADY EXISTS
+    existing_user = db.query(User).filter(User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="⚠️ Email is already registered")
 
-@router.post("/login")
-def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user or not Hasher.verify_password(user.password, db_user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    return {"status": "success", "message": "Login successful", "email": user.email}
+    hashed_password = Hasher.get_password_hash(user.password)
+    db_user = User(full_name=user.full_name, email=user.email, password_hash=hashed_password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return {"message": "✅ Signup successful"}

@@ -1,5 +1,3 @@
-# api/feedback_api.py
-
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from ai_agents.feedback_agent.tool import evaluate_answer
@@ -21,3 +19,13 @@ def generate_feedback_report(data: FeedbackRequest):
 
     return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf",
                               headers={"Content-Disposition": f"attachment; filename=feedback_report.pdf"})
+
+# ✅ Add missing route used in UI
+class EvaluateRequest(BaseModel):
+    answer: str
+    jd: str
+
+@router.post("/api/evaluate")
+def evaluate_answer_route(data: EvaluateRequest):
+    feedback = evaluate_answer(data.answer, data.jd)
+    return {"feedback": feedback}

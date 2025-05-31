@@ -44,7 +44,7 @@ export default function Sidebar({ active }) {
             <FaFileAlt /> AI Resume
           </NavLink>
         </nav>
-      </div>
+      </div>x
 
       {/* Bottom Settings + Help */}
       <div className="space-y-4 text-gray-700 text-sm pt-4 border-t mt-6">
