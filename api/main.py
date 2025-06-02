@@ -155,6 +155,71 @@ async def save_onboarding(request: Request, data: dict = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+import io
+from fastapi.responses import StreamingResponse
+from utils.resume.docx_exporter import text_to_docx_bytes  # You'll create this file.
+from api.playwright.auto_apply import apply_to_job_site    # You'll create this file.
+
+# ---- Tailor Resume Endpoint ----
+class TailorInput(BaseModel):
+    resume: str
+    jd: str
+    role: str = "Generic"
+    company: str = "Unknown"
+
+@app.post("/tailor-resume")
+def tailor_resume_route(data: TailorInput):
+    result = tailor_resume(data.resume, data.jd)
+    # result is a dict with "tailored_resume", "original_match", "tailored_match"
+    def parse_score(s):
+        try:
+            return int(str(s).split('%')[0].strip())
+        except:
+            return 0
+    return {
+        "tailored_resume": result["tailored_resume"],
+        "original_match": parse_score(result["original_match"]),
+        "tailored_match": parse_score(result["tailored_match"]),
+        "original_match_text": result["original_match"],
+        "tailored_match_text": result["tailored_match"],
+    }
+
+# ---- Download Resume Endpoint (PDF/DOCX) ----
+class DownloadInput(BaseModel):
+    resume: str
+    format: str = "pdf"
+
+@app.post("/download-resume")
+def download_resume(data: DownloadInput):
+    if data.format == "pdf":
+        pdf_bytes = text_to_pdf_bytes(data.resume)
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=resume.pdf"}
+        )
+    elif data.format == "docx":
+        docx_bytes = text_to_docx_bytes(data.resume)
+        return StreamingResponse(
+            io.BytesIO(docx_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": "attachment; filename=resume.docx"}
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported format")
+
+# ---- Auto-Apply via Playwright ----
+class AutoApplyInput(BaseModel):
+    resume: str
+    job_url: str
+    job_title: str
+    company: str
+
+@app.post("/auto-apply")
+def auto_apply_route(data: AutoApplyInput):
+    result = apply_to_job_site(data.resume, data.job_url, data.job_title, data.company)
+    return {"status": "Auto-apply triggered", "result": result}
+
 # ✅ Serve static files (audio, resume, etc.)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

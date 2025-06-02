@@ -1,15 +1,26 @@
-You are a career coach evaluating how well a resume matches a job description.
+You are an expert hiring manager.
+Given a candidate’s résumé and a job description, evaluate how well the résumé fits the job.
+Return your answer in the following exact format:
 
-Analyze the candidate’s qualifications and provide a clear match rating out of 100% based on:
-- Skill alignment
-- Experience relevance
-- Keyword overlap
-- Role responsibilities
+"<X>% Match – <brief explanation>"
 
-Resume:
+Where:
+  • <X> is an integer from 0 to 100 (no decimals), followed by the percent sign.
+  • <brief explanation> is 1–2 sentences highlighting why the résumé is (or is not) a good fit, referencing specific keywords from the job description or résumé.
+
+For example:
+"85% Match – The candidate’s experience in AWS, microservices, and Python directly aligns with the job requirements. They have demonstrated success migrating to Kubernetes and optimizing cloud infrastructure."
+
+Now evaluate:
+
+Résume:
+---------
 {{resume_text}}
+---------
 
 Job Description:
+---------
 {{jd_text}}
+---------
 
-Provide a match score as a percentage (e.g., “Match: 82%”) followed by a short justification.
+Return only the single line starting with "<X>% Match – ...". Do not output anything else.

@@ -1,7 +1,10 @@
+// src/utils/api.js
+
 const API_BASE = process.env.REACT_APP_API_BASE || "";
 
-
-// ✅ Upload resume file
+/**
+ * Resume Upload (multipart/form-data)
+ */
 export const uploadResume = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -15,7 +18,74 @@ export const uploadResume = async (file) => {
   return res.json();
 };
 
-// ✅ Generate AI-based resume (returns DOCX blob)
+/**
+ * Tailor Resume with GPT (/tailor-resume)
+ */
+export const tailorResume = async (resume, jd, role = "Generic", company = "Unknown") => {
+  const res = await fetch(`${API_BASE}/tailor-resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resume, jd, role, company }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Tailor failed");
+  }
+  return await res.json();
+};
+
+/**
+ * Download Resume (PDF or DOCX)
+ * Returns a Blob you can use for download (do NOT auto-download inside this function!)
+ * Use in ResumeEditor: await downloadPDF(text, fileName) or downloadDOCX(text, fileName)
+ */
+export const downloadPDF = async (resumeText, fileName = "AI_Resume") => {
+  // Try modern endpoint first
+  const res = await fetch(`${API_BASE}/download-resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resume: resumeText, format: "pdf" }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "PDF download failed");
+  }
+  return res.blob();
+};
+
+export const downloadDOCX = async (resumeText, fileName = "AI_Resume") => {
+  // Try modern endpoint first
+  const res = await fetch(`${API_BASE}/download-resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resume: resumeText, format: "docx" }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "DOCX download failed");
+  }
+  return res.blob();
+};
+
+/**
+ * Auto-Apply to Job (/auto-apply)
+ */
+export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
+  const res = await fetch(`${API_BASE}/auto-apply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resume, job_url, job_title, company }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Auto-apply failed");
+  }
+  return await res.json();
+};
+
+/**
+ * Generate AI-Based Resume (DOCX)
+ */
 export const generateResume = async (name, job_description) => {
   const res = await fetch(`${API_BASE}/api/generate-resume`, {
     method: "POST",
@@ -23,35 +93,16 @@ export const generateResume = async (name, job_description) => {
     body: JSON.stringify({ name, job_description }),
   });
 
-  if (!res.ok) throw new Error("Resume generation failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Resume generation failed");
+  }
   return res.blob(); // .docx file
 };
 
-// ✅ Download resume as PDF
-export const downloadPDF = async (resumeText, fileName = "AI_Resume") => {
-  const res = await fetch(`${API_BASE}/api/download-pdf`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resume_text: resumeText, file_name: fileName }),
-  });
-
-  if (!res.ok) throw new Error("PDF download failed");
-  return res.blob();
-};
-
-// ✅ Download resume as DOCX
-export const downloadDOCX = async (resumeText, fileName = "AI_Resume") => {
-  const res = await fetch(`${API_BASE}/api/download-docx`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resume_text: resumeText, file_name: fileName }),
-  });
-
-  if (!res.ok) throw new Error("DOCX download failed");
-  return res.blob();
-};
-
-// ✅ Match resume to job description
+/**
+ * Match Resume to Job Description
+ */
 export const matchResumeToJD = async (resume, jd) => {
   const res = await fetch(`${API_BASE}/api/match`, {
     method: "POST",
@@ -59,35 +110,32 @@ export const matchResumeToJD = async (resume, jd) => {
     body: JSON.stringify({ resume, jd }),
   });
 
-  if (!res.ok) throw new Error("Resume-JD match failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Resume–JD match failed");
+  }
   return res.json();
 };
 
-// ✅ Tailor resume using GPT
-export const tailorResumeWithAI = async (resume, jd, role = "Job", company = "Company") => {
-  const res = await fetch(`${API_BASE}/api/tailor`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resume, jd, role, company }),
-  });
-
-  if (!res.ok) throw new Error("Resume tailoring failed");
-  return res.json();
-};
-
-// ✅ Submit onboarding details
+/**
+ * Submit Onboarding Details
+ */
 export const submitOnboarding = async (data) => {
   const res = await fetch(`${API_BASE}/api/onboarding`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-
-  if (!res.ok) throw new Error("Onboarding submission failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Onboarding submission failed");
+  }
   return res.json();
 };
 
-// ✅ Evaluate interview answer for feedback
+/**
+ * Evaluate Interview Answer for Feedback
+ */
 export const evaluateAnswer = async (answer, jd = "Generic") => {
   const res = await fetch(`${API_BASE}/api/evaluate`, {
     method: "POST",
@@ -95,11 +143,16 @@ export const evaluateAnswer = async (answer, jd = "Generic") => {
     body: JSON.stringify({ answer, jd }),
   });
 
-  if (!res.ok) throw new Error("Evaluation failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Evaluation failed");
+  }
   return res.json();
 };
 
-// ✅ Fetch AI-generated interview questions
+/**
+ * Fetch AI-Generated Interview Questions
+ */
 export const fetchInterviewQuestions = async (jobTitle) => {
   const res = await fetch(`${API_BASE}/api/generate-questions`, {
     method: "POST",
@@ -107,11 +160,16 @@ export const fetchInterviewQuestions = async (jobTitle) => {
     body: JSON.stringify({ job_title: jobTitle }),
   });
 
-  if (!res.ok) throw new Error("Question generation failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Question generation failed");
+  }
   return res.json();
 };
 
-// ✅ Fetch job listings based on resume
+/**
+ * Fetch Job Listings Based on Resume
+ */
 export const fetchJobs = async (resume) => {
   const res = await fetch(`${API_BASE}/api/jobs`, {
     method: "POST",
@@ -119,11 +177,16 @@ export const fetchJobs = async (resume) => {
     body: JSON.stringify({ resume }),
   });
 
-  if (!res.ok) throw new Error("Job fetching failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Job fetching failed");
+  }
   return res.json();
 };
 
-// ✅ Get job details
+/**
+ * Get Job Details (with GPT Explanation)
+ */
 export const getJobDetail = async (jobId, resumeText) => {
   const res = await fetch(`${API_BASE}/api/job/${jobId}`, {
     method: "POST",
@@ -131,18 +194,25 @@ export const getJobDetail = async (jobId, resumeText) => {
     body: JSON.stringify({ resume: resumeText }),
   });
 
-  if (!res.ok) throw new Error("Fetching job detail failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Fetching job detail failed");
+  }
   return res.json();
 };
 
-// ✅ Apply to job (with tailored resume + autofill)
+/**
+ * Legacy “apply to job”
+ */
 export const applyToJob = async (data) => {
   const res = await fetch(`${API_BASE}/api/apply-to-job`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-
-  if (!res.ok) throw new Error("Job application failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Job application failed");
+  }
   return res.json();
 };

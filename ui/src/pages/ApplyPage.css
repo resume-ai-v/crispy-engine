@@ -1,0 +1,204 @@
+/* src/pages/ApplyPage.css */
+
+/* Base container for padding + background */
+.apppage-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #f9fafb; /* light gray background */
+  font-family: "Inter", sans-serif;
+  color: #111827;
+}
+
+/* “Back to Jobs” button */
+.back-button {
+  background: none;
+  border: none;
+  color: #4b5563;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  transition: color 0.2s;
+}
+.back-button:hover {
+  color: #111827;
+}
+
+/* Job title and subtitles */
+.job-title {
+  font-size: 2.25rem; /* 36px */
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.job-subtitle {
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+.job-type {
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+/* Match Scores row */
+.match-scores-container {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.score-box {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.score-label {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+.score-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 0.25rem;
+}
+
+/* Action buttons: Tailor vs Use Current */
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.btn-primary,
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+.btn-primary {
+  background-color: #7c3aed; /* purple-600 */
+  color: #ffffff;
+  border: none;
+}
+.btn-primary:hover {
+  background-color: #6b21a8; /* purple-700 */
+}
+.btn-disabled {
+  background-color: #d1d5db; /* gray-300 */
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.btn-secondary {
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+.btn-secondary:hover {
+  background-color: #f3f4f6; /* gray-100 */
+}
+
+/* Editor + Download + Apply */
+.editor-and-downloads {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.editor-label {
+  font-weight: 500;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.resume-editor {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background-color: #f9fafb;
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.4rem;
+  color: #374151;
+  padding: 1rem;
+  resize: vertical;
+  min-height: 300px;
+  margin-bottom: 1.25rem;
+}
+
+.download-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn-outline {
+  background-color: #f3f4f6; /* gray-100 */
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-outline:hover {
+  background-color: #e5e7eb; /* gray-200 */
+}
+
+.btn-apply {
+  background-color: #7c3aed; /* purple-600 */
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-apply:hover {
+  background-color: #6b21a8; /* purple-700 */
+}
+.btn-apply:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Job description section */
+.job-description-section {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+.section-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.job-description-text {
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+  color: #374151;
+  line-height: 1.4rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  max-height: 350px;
+  overflow-y: auto;
+}

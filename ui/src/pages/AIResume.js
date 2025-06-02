@@ -1,167 +1,134 @@
-import React, { useState } from "react";
-import Sidebar from "../components/Sidebar";
-import {
-  uploadResume,
-  generateResume,
-  tailorResumeWithAI,
-} from "../utils/api";
+// src/pages/AIResume.js
+
+import React, { useState, useEffect } from "react";
+import ResumeCard from "../components/ResumeCard";
+import { tailorResume, downloadPDF, downloadDOCX } from "../utils/api";
+import { FaDownload } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 export default function AIResume() {
-  const [resumeURL, setResumeURL] = useState("");
-  const [jobDesc, setJobDesc] = useState("");
-  const [name, setName] = useState("");
+  const [resumeInput, setResumeInput] = useState(() => localStorage.getItem("resumeText") || "");
+  const [jobDescription, setJobDescription] = useState("");
+  const [tailoredResume, setTailoredResume] = useState("");
+  const [originalMatch, setOriginalMatch] = useState(null);
+  const [tailoredMatch, setTailoredMatch] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const userName = localStorage.getItem("userFullName") || "Guest";
+  const navigate = useNavigate();
 
-  const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  // Keep resume input synced to localStorage for use by ResumeEditor
+  useEffect(() => {
+    localStorage.setItem("resumeText", resumeInput);
+  }, [resumeInput]);
 
-    setLoading(true);
-    try {
-      const data = await uploadResume(file);
-      localStorage.setItem("resumeText", data.parsed_resume);
-      setResumeURL("");
-      alert("✅ Resume uploaded & parsed successfully!");
-    } catch (err) {
-      alert("❌ Upload failed.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGenerate = async () => {
-    if (!name || !jobDesc) return alert("Please enter your name and job description.");
-
-    setLoading(true);
-    try {
-      const blob = await generateResume(name, jobDesc);
-      const url = URL.createObjectURL(blob);
-      setResumeURL(url);
-      localStorage.setItem("resumeGenerated", url);
-    } catch (err) {
-      alert("❌ Failed to generate resume.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Handle AI tailoring
   const handleTailor = async () => {
-    const resumeText = localStorage.getItem("resumeText");
-    if (!resumeText || !jobDesc) {
-      alert("❌ Please upload a resume and enter a job description first.");
+    if (!resumeInput.trim() || !jobDescription.trim()) {
+      alert("Please provide both your resume text and a job description.");
       return;
     }
-
     setLoading(true);
     try {
-      const { tailored_resume } = await tailorResumeWithAI(resumeText, jobDesc);
-      const blob = new Blob([tailored_resume], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      setResumeURL(url);
-      alert("✅ Resume tailored successfully!");
+      const res = await tailorResume(resumeInput, jobDescription, "Generic", "Unknown");
+      setTailoredResume(res.tailored_resume);
+      setOriginalMatch(res.original_match);
+      setTailoredMatch(res.tailored_match);
+      localStorage.setItem("tailoredResumeText", res.tailored_resume || "");
     } catch (err) {
-      console.error("Tailoring failed:", err);
-      alert("❌ Failed to tailor resume.");
-    } finally {
-      setLoading(false);
+      alert("❌ Failed to tailor resume with AI. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  // Handle PDF/DOCX download
+  const handleDownload = async (format) => {
+    const textToDownload = tailoredResume || resumeInput;
+    if (!textToDownload) {
+      alert("Nothing to download. Please tailor your resume first or enter resume text.");
+      return;
+    }
+    try {
+      if (format === "pdf") {
+        await downloadPDF(textToDownload, "AI_Resume");
+      } else if (format === "docx") {
+        await downloadDOCX(textToDownload, "AI_Resume");
+      }
+    } catch (err) {
+      alert("❌ Download failed. Please try again.");
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar active="resume" />
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">Recommended Jobs</h1>
-            <h2 className="text-lg font-semibold text-gray-700 mt-1">AI Resumes</h2>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <main className="flex flex-1 w-full max-w-7xl mx-auto gap-8 py-12 px-4">
+        {/* LEFT: Tailoring Form */}
+        <section className="w-full max-w-lg bg-white rounded-2xl shadow p-8 flex flex-col justify-start">
+          <h1 className="text-3xl font-bold mb-6 text-gray-900">AI-Powered Resume Tailoring</h1>
+          <div className="mb-5">
+            <label className="block font-semibold mb-1">Your Resume (Plain Text):</label>
+            <textarea
+              className="w-full p-3 border border-gray-200 rounded-lg h-32 focus:outline-none focus:ring focus:border-purple-400"
+              value={resumeInput}
+              onChange={(e) => setResumeInput(e.target.value)}
+              placeholder="Paste your current resume text here..."
+            />
           </div>
-          <div className="relative group">
-            <button className="text-sm font-medium text-gray-700 group-hover:text-purple-600">
-              {userName} <span className="ml-1">▼</span>
-            </button>
-            <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg hidden group-hover:block z-10">
-              <a href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
-              <a href="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
-              <a href="/help" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Help</a>
-              <a href="/logout" className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</a>
-            </div>
+          <div className="mb-5">
+            <label className="block font-semibold mb-1">Job Description (Plain Text):</label>
+            <textarea
+              className="w-full p-3 border border-gray-200 rounded-lg h-32 focus:outline-none focus:ring focus:border-purple-400"
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              placeholder="Paste the job description here..."
+            />
           </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-8">
-          {/* LEFT PANEL */}
-          <div className="col-span-1 bg-white p-4 rounded shadow h-full">
-            <div className="text-lg font-medium text-gray-700 border-b pb-2 mb-2">Resume Actions</div>
-
-            {/* Upload Resume */}
-            <div className="mb-4">
-              <label className="block text-sm text-gray-600 mb-1">Upload Resume</label>
-              <input type="file" onChange={handleUpload} className="text-sm" />
+          <button
+            onClick={handleTailor}
+            disabled={loading}
+            className="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 transition mb-4 w-full font-semibold"
+          >
+            {loading ? "Tailoring…" : "Tailor My Resume with AI"}
+          </button>
+          {(originalMatch !== null && tailoredMatch !== null) && (
+            <div className="mb-1 text-gray-700 flex gap-4 items-center justify-between px-1">
+              <span>
+                <span className="font-semibold">Original Match:</span> {originalMatch}
+              </span>
+              <span>
+                <span className="font-semibold">Tailored Match:</span> {tailoredMatch}
+              </span>
             </div>
+          )}
+        </section>
 
-            {/* Generate Resume */}
-            <div className="mb-4">
-              <label className="block text-sm text-gray-600 mb-1">Your Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border px-2 py-1 text-sm rounded"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm text-gray-600 mb-1">Job Description</label>
-              <textarea
-                rows={5}
-                value={jobDesc}
-                onChange={(e) => setJobDesc(e.target.value)}
-                className="w-full border px-2 py-1 text-sm rounded"
-              ></textarea>
-            </div>
-
-            <button
-              onClick={handleGenerate}
-              disabled={loading}
-              className="w-full bg-purple-600 text-white py-2 rounded shadow hover:bg-purple-700"
-            >
-              {loading ? "Generating..." : "Generate AI Resume"}
-            </button>
-
-            {/* Tailor Resume */}
-            <div className="mt-6 border-t pt-4">
-              <div className="text-md font-medium text-gray-700 mb-2">Tailor Resume to Job</div>
-
+        {/* RIGHT: Resume Card Preview */}
+        <section className="flex-1 max-w-2xl flex flex-col items-center bg-white rounded-2xl shadow p-10">
+          <div className="flex justify-between w-full mb-3">
+            <h2 className="text-xl font-bold">AI Resumes</h2>
+            <div className="flex gap-2">
               <button
-                onClick={handleTailor}
-                disabled={loading}
-                className="w-full bg-purple-600 text-white py-2 rounded shadow hover:bg-purple-700"
+                onClick={() => handleDownload("pdf")}
+                className="flex items-center gap-2 text-purple-700 px-3 py-1 border border-purple-200 rounded hover:bg-purple-50 transition"
               >
-                {loading ? "Tailoring..." : "Tailor My Resume"}
+                <FaDownload /> PDF
+              </button>
+              <button
+                onClick={() => handleDownload("docx")}
+                className="flex items-center gap-2 text-purple-700 px-3 py-1 border border-purple-200 rounded hover:bg-purple-50 transition"
+              >
+                <FaDownload /> DOCX
+              </button>
+              {/* Resume Editor Button */}
+              <button
+                className="bg-purple-100 text-purple-700 px-4 py-1 rounded ml-2 hover:bg-purple-200"
+                onClick={() => navigate("/resume-editor")}
+              >
+                ✏️ Open Resume Editor
               </button>
             </div>
           </div>
-
-          {/* RIGHT PANEL */}
-          <div className="col-span-2 bg-white p-6 rounded shadow min-h-[80vh]">
-            {resumeURL ? (
-              <iframe
-                src={resumeURL}
-                title="AI Resume"
-                className="w-full h-[80vh] border rounded-md shadow"
-              ></iframe>
-            ) : (
-              <div className="text-center text-gray-600 text-lg">
-                No resume generated yet.
-              </div>
-            )}
-          </div>
-        </div>
+          <ResumeCard resumeText={tailoredResume || resumeInput} />
+        </section>
       </main>
     </div>
   );

@@ -1,150 +1,40 @@
-# ----------------------------------
-# ✅ FILE: api/routers/resume_api.py
-# ----------------------------------
+# api/routers/resume_api.py
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from utils.resume.extract_text import extract_text_from_file
-from utils.resume.pdf_exporter import text_to_pdf_bytes
-from docx import Document
-from io import BytesIO
-import os
-from dotenv import load_dotenv
-from openai import OpenAI
-
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 router = APIRouter()
 
-# -----------------------------
-# 1️⃣ Upload and Store Resume in Session
-# -----------------------------
-@router.post("/upload-resume")
-async def upload_resume(request: Request, file: UploadFile = File(...)):
-    try:
-        content = extract_text_from_file(file.file, file.filename)
-        request.session["resume"] = content
-        return {"message": "Resume uploaded and stored in session.", "parsed_resume": content}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-# -----------------------------
-# 2️⃣ Retrieve Stored Resume
-# -----------------------------
-@router.get("/get-resume")
-async def get_resume(request: Request):
-    resume = request.session.get("resume")
-    if not resume:
-        return {"message": "No resume found in session."}
-    return {"resume": resume}
-
-# -----------------------------
-# 3️⃣ AI Resume Generator (DOCX download)
-# -----------------------------
-class ResumeRequest(BaseModel):
-    name: str
-    job_description: str
-
-@router.post("/generate-resume")
-async def generate_resume(request: Request, data: ResumeRequest):
-    try:
-        prompt = f"""
-        Create a professional resume for {data.name}, tailored to this job description:
-        {data.job_description}
-        Include Summary, Skills, Experience, and Education sections.
-        """
-
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        content = response.choices[0].message.content
-        request.session["resume"] = content
-
-        doc = Document()
-        doc.add_heading(f"{data.name} - AI Resume", 0)
-        for line in content.split("\n"):
-            if line.strip():
-                doc.add_paragraph(line.strip())
-
-        buffer = BytesIO()
-        doc.save(buffer)
-        buffer.seek(0)
-
-        return StreamingResponse(
-            buffer,
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": f"attachment; filename={data.name.replace(' ', '_')}_resume.docx"}
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# -----------------------------
-# 4️⃣ Download Resume (DOCX / PDF)
-# -----------------------------
-class FinalResume(BaseModel):
-    resume_text: str
-    file_name: str = "final_resume"
-
-@router.post("/download-docx")
-def download_docx(data: FinalResume):
-    doc = Document()
-    for line in data.resume_text.split("\n"):
-        if line.strip():
-            doc.add_paragraph(line.strip())
-    buffer = BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    return StreamingResponse(
-        buffer,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f"attachment; filename={data.file_name}.docx"}
-    )
-
-@router.post("/download-pdf")
-def download_pdf(data: FinalResume):
-    pdf_bytes = text_to_pdf_bytes(data.resume_text)
-    return StreamingResponse(
-        BytesIO(pdf_bytes),
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={data.file_name}.pdf"}
-    )
-
-# -----------------------------
-# 5️⃣ Tailor Resume Using GPT (New Endpoint)
-# -----------------------------
-class TailorRequest(BaseModel):
+class ResumePayload(BaseModel):
     resume: str
     jd: str
-    role: str = "Job"
-    company: str = "Company"
 
-@router.post("/api/tailor")
-def tailor_resume_endpoint(data: TailorRequest):
+
+@router.post("/tailor-resume")
+async def tailor_resume_route(data: ResumePayload):
+    """
+    Endpoint: POST /tailor-resume
+    Expects JSON: { "resume": "<the resume text>", "jd": "<the job description>" }
+
+    Returns JSON:
+      {
+        "tailored_resume": "<GPT-tailored résumé>",
+        "original_match": "<X% Match – explanation>",
+        "tailored_match": "<Y% Match – explanation>"
+      }
+    """
+    if not data.resume or not data.jd:
+        raise HTTPException(status_code=400, detail="Missing 'resume' or 'jd' field.")
+
+    # Import the function from our updated ai_agents code
+    from ai_agents.resume_tailor.tool import tailor_resume
+
     try:
-        prompt = f"""
-        Improve and tailor the following resume to match this job description for the role of {data.role} at {data.company}.
-
-        --- JOB DESCRIPTION ---
-        {data.jd}
-
-        --- ORIGINAL RESUME ---
-        {data.resume}
-
-        Return only the improved resume text with no explanation.
-        """
-
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        tailored_resume = response.choices[0].message.content
-        return {"tailored_resume": tailored_resume}
-
+        result = tailor_resume(data.resume, data.jd)
+        return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to tailor resume: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Something went wrong while tailoring the résumé. {str(e)}"
+        )

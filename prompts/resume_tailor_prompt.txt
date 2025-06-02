@@ -1,19 +1,50 @@
-You are a professional resume consultant helping candidates land interviews at top tech companies.
+You are an expert resume writer.
 
-Your task is to tailor the following resume to closely match the job description. Emphasize relevant skills, experiences, and achievements that align with the job.
-
-Format the output in this order:
-1. Professional Summary
-2. Skills
-3. Experience (most recent first)
-4. Education
-
-Do not fabricate information, but feel free to reword and highlight relevant experience.
-
-Candidate Resume:
+Below is a candidate’s current (raw) resume text:
+------------------------------
 {{resume_text}}
+------------------------------
 
-Target Job Description:
+Below is a job description for a target position:
+------------------------------
 {{jd_text}}
+------------------------------
 
-Now generate a tailored resume using a confident and polished tone.
+YOUR TASK:
+Rewrite the candidate’s resume into a fully ATS-friendly, plain-text format. Include all of these sections in this exact order, using the EXACT HEADINGS shown (in ALL CAPS), each followed by a single blank line.
+
+1. CONTACT INFORMATION
+   • Name: [Full Name]
+   • Email: [email@example.com]
+   • Phone: [XXX-XXX-XXXX]
+
+2. PROFESSIONAL SUMMARY
+   Write 3–4 concise, keyword-rich sentences summarizing the candidate’s top strengths as they relate to this job description.
+
+3. KEY SKILLS
+   List 6–8 of the candidate’s hard and soft skills (bullet points with a leading hyphen). Make sure these “match” or closely echo keywords from the JD.
+
+4. WORK EXPERIENCE
+   For each role (most recent first), include:
+     • Job Title, Company Name, City, State, Dates Employed (Month Year – Month Year)
+     • Under each role, list 3–5 bullet points (leading hyphens) that highlight achievements, using strong action verbs and keywords from the JD.
+   If the original resume text does not separate roles clearly, do your best to extract discrete positions.
+
+5. EDUCATION
+   • Degree, Major, School Name, City, State, Graduation Year (if known)
+   • (If multiple degrees, list most recent degree first.)
+
+6. CERTIFICATIONS (optional)
+   • List any relevant certifications (e.g. “AWS Certified Solutions Architect – Associate”), one per bullet.
+
+7. PROJECTS (optional)
+   • If the candidate has relevant side-projects or open-source contributions, list each project as:
+     – Project Name (Dates) – one sentence summary of what the project does and what technologies were used.
+
+NOTES:
+• Use **plain text only**—no tables, no fancy markdown, no emojis.
+• Use hyphens (“-”) for bullets.
+• Each section heading (e.g. “WORK EXPERIENCE”) should be in ALL CAPS, followed by a blank line, then its content.
+• Do not invent any details—only reformat or rewrite what the candidate already provided in `{{resume_text}}`. If something is missing (e.g. no dates), leave it out rather than guessing.
+• Make sure you weave in keywords from the JD under “KEY SKILLS” and “WORK EXPERIENCE.”
+• Output exactly one resume (no extra commentary).

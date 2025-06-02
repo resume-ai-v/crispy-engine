@@ -1,57 +1,62 @@
-export default function ResumeCard() {
+import React from "react";
+
+// Helper: extract sections (very simple parser)
+function parseResume(text) {
+  const sections = {};
+  let currentSection = "SUMMARY";
+  let buffer = [];
+  text.split("\n").forEach((line) => {
+    // Section headings: look for all-caps or standard sections
+    const headingMatch = line.match(/^([A-Z][A-Z\s]+|SUMMARY|EDUCATION|EXPERIENCE|SKILLS|PROJECTS|TECHNICAL)/);
+    if (headingMatch && line.trim().length < 35) {
+      if (buffer.length) sections[currentSection] = buffer.join("\n").trim();
+      currentSection = headingMatch[1].trim();
+      buffer = [];
+    } else {
+      buffer.push(line);
+    }
+  });
+  if (buffer.length) sections[currentSection] = buffer.join("\n").trim();
+  return sections;
+}
+
+export default function ResumeCard({ resumeText }) {
+  if (!resumeText) {
+    return (
+      <div className="bg-gray-50 p-10 rounded-xl text-center text-gray-400">
+        <div className="mb-2 font-bold text-xl">AI Resume Preview</div>
+        <div className="text-sm">Your tailored resume will appear here.</div>
+      </div>
+    );
+  }
+
+  const sections = parseResume(resumeText);
+
   return (
-    <div className="bg-white p-6 rounded-lg shadow w-full max-w-3xl">
-      <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-2xl font-bold">ROHITH R KRISHNAN</h2>
-          <p className="text-sm text-gray-600">Software Engineer</p>
-          <p className="text-sm text-gray-600">
-            (+91) 8086112313 • rohit.krishna1521@gmail.com • www.rohitkrishna.com
-          </p>
+    <div className="bg-white p-8 rounded-xl shadow w-full text-gray-800 leading-relaxed">
+      {/* Name/Header */}
+      {sections.NAME && (
+        <div className="mb-2">
+          <h2 className="text-2xl font-bold">{sections.NAME}</h2>
         </div>
-        <button className="border px-4 py-1 rounded text-sm">Edit</button>
-      </div>
+      )}
+      {/* Contact */}
+      {sections.CONTACT && (
+        <div className="mb-2 text-sm text-gray-600">{sections.CONTACT}</div>
+      )}
 
-      {/* Skills */}
-      <div className="mt-6">
-        <h3 className="font-semibold mb-2">SKILLS</h3>
-        <ul className="text-sm text-gray-700 columns-2 space-y-1">
-          <li>Rapid Prototyping</li>
-          <li>Storyboarding</li>
-          <li>Design Research</li>
-          <li>Interaction Design</li>
-          <li>Wireframing</li>
-          <li>UI Designing</li>
-          <li>After Effects</li>
-          <li>Framer</li>
-          <li>Protopie</li>
-          <li>Web (HTML, CSS, JS)</li>
-          <li>Android (Flutter, Kotlin)</li>
-        </ul>
-      </div>
-
-      {/* Experiences */}
-      <div className="mt-6">
-        <h3 className="font-semibold mb-2">EXPERIENCES</h3>
-        <p className="font-semibold text-sm">Product Designer | Disney+Hotstar</p>
-        <p className="text-xs text-gray-500">Bangalore, IN | Sep 2021 – Current</p>
-        <p className="text-sm text-gray-700 mb-3">
-          Working on subscription and ad experiences across mobile, tablet, and TV platforms.
-        </p>
-
-        <p className="font-semibold text-sm">Product Designer | Dunzo</p>
-        <p className="text-xs text-gray-500">Bangalore, IN | Jan 2020 – Sep 2021</p>
-        <p className="text-sm text-gray-700">
-          Designed end-to-end features including Dunzo Daily, payment experience, and design systems.
-        </p>
-      </div>
-
-      {/* Education */}
-      <div className="mt-6">
-        <h3 className="font-semibold mb-2">EDUCATION</h3>
-        <p className="text-sm text-gray-800">B.Tech in Electronics and Communication</p>
-        <p className="text-xs text-gray-500">Amrita Vishwa Vidyapeetham, Kerala (2016–2020)</p>
-      </div>
+      {/* Main sections */}
+      {Object.entries(sections).map(([heading, content]) => {
+        if (["NAME", "CONTACT"].includes(heading)) return null;
+        return (
+          <div className="mb-6" key={heading}>
+            <h3 className="text-lg font-bold text-purple-700 mb-2">{heading.replace(/_/g, " ")}</h3>
+            <div className="text-sm whitespace-pre-line">
+              {content}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

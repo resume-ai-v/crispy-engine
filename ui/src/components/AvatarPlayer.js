@@ -1,3 +1,4 @@
+// src/components/AvatarPlayer.js
 import React from "react";
 
 export default function AvatarPlayer({ videoUrl, audioUrl }) {

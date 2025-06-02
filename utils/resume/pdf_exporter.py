@@ -1,47 +1,24 @@
-import io
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
+import os
+from fpdf import FPDF
 
-def text_to_pdf_bytes(text: str) -> bytes:
-    """
-    Converts raw text into a PDF and returns it as byte content.
+FONT_PATH = os.path.join(os.path.dirname(__file__), "fonts", "DejaVuSans.ttf")
 
-    Args:
-        text (str): Resume or content to embed in PDF
+class PdfResumeExporter:
+    def __init__(self, resume_text):
+        self.resume_text = resume_text
 
-    Returns:
-        bytes: Byte stream of the generated PDF
-    """
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
-    margin = 40
-    y = height - margin
+    def export_pdf_bytes(self):
+        pdf = FPDF()
+        pdf.add_page()
+        if not os.path.isfile(FONT_PATH):
+            print(f"WARNING: Font file not found at {FONT_PATH}. Falling back to Arial.")
+            pdf.set_font("Arial", size=12)
+        else:
+            pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
+            pdf.set_font("DejaVu", size=12)
+        for line in self.resume_text.splitlines():
+            pdf.cell(0, 10, line, ln=True)
+        return pdf.output(dest='S').encode('latin1')
 
-    for line in text.splitlines():
-        c.drawString(margin, y, line[:120])  # Avoids text overflow
-        y -= 15
-        if y < margin:
-            c.showPage()
-            y = height - margin
-
-    c.save()
-    buffer.seek(0)
-    return buffer.read()
-
-
-def text_to_pdf_file(text: str, filename: str = "document.pdf") -> str:
-    """
-    Saves PDF content to a .pdf file locally.
-
-    Args:
-        text (str): Content to embed
-        filename (str): Output path
-
-    Returns:
-        str: File path of saved PDF
-    """
-    pdf_bytes = text_to_pdf_bytes(text)
-    with open(filename, "wb") as f:
-        f.write(pdf_bytes)
-    return filename
+def text_to_pdf_bytes(resume_text):
+    return PdfResumeExporter(resume_text).export_pdf_bytes()

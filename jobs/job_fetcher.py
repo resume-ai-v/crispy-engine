@@ -1,18 +1,14 @@
 import requests
 import time
 import os
-from functools import lru_cache
 
-# Load API keys from environment variables
 JSEARCH_API_KEY = os.getenv("JSEARCH_API_KEY")
 JSEARCH_API_HOST = os.getenv("JSEARCH_API_HOST")
 
-# In-memory cache to avoid excessive external calls
 _cached_jobs = []
 _cache_timestamp = 0
 _CACHE_EXPIRY = 300  # 5 minutes
 
-# ✅ JSON safe converter
 def make_json_safe(job):
     return {
         k: list(v) if isinstance(v, set) else v
@@ -26,15 +22,15 @@ def fetch_jobs_from_api(keyword="software engineer", location="United States"):
     if _cached_jobs and (now - _cache_timestamp) < _CACHE_EXPIRY:
         return _cached_jobs
 
+    print("[fetch_jobs_from_api] Using Remotive and JSearch")
     remotive_jobs = fetch_remotive_jobs(keyword)
     jsearch_jobs = fetch_jsearch_jobs(keyword)
 
     combined = [make_json_safe(job) for job in remotive_jobs + jsearch_jobs]
-
     _cached_jobs = combined
     _cache_timestamp = now
+    print(f"[fetch_jobs_from_api] {len(combined)} jobs found")
     return combined
-
 
 def fetch_remotive_jobs(keyword):
     try:
@@ -58,14 +54,17 @@ def fetch_remotive_jobs(keyword):
                 "jd_text": job.get("description", ""),
                 "source": "Remotive"
             })
+        print(f"[fetch_remotive_jobs] {len(jobs)} jobs from Remotive")
         return jobs
     except Exception as e:
         print("❌ Remotive failed:", e)
         return []
 
-
 def fetch_jsearch_jobs(keyword):
     try:
+        if not JSEARCH_API_KEY or not JSEARCH_API_HOST:
+            print("❌ JSearch API credentials missing")
+            return []
         url = f"https://jsearch.p.rapidapi.com/search?query={keyword}&page=1&num_pages=1"
         headers = {
             "X-RapidAPI-Key": JSEARCH_API_KEY,
@@ -90,6 +89,7 @@ def fetch_jsearch_jobs(keyword):
                 "jd_text": job.get("job_description", ""),
                 "source": "JSearch"
             })
+        print(f"[fetch_jsearch_jobs] {len(jobs)} jobs from JSearch")
         return jobs
     except Exception as e:
         print("❌ JSearch failed:", e)

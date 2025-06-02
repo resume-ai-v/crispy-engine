@@ -61,7 +61,7 @@ export default function InlineEditor() {
       </div>
 
       <textarea
-        className="w-full h-[500px] p-4 border border-gray-300 rounded shadow-sm font-mono text-sm whitespace-pre-wrap"
+        className="w-full h-[500px] p-4 border border-gray-300 rounded shadow-sm font-mono text-base whitespace-pre-wrap"
         value={resume}
         onChange={handleChange}
       />

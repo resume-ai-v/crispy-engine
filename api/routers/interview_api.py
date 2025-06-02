@@ -24,25 +24,25 @@ print(f"ELEVENLABS_API_KEY: {'✅ Loaded' if ELEVENLABS_API_KEY else '❌ Missin
 print(f"ELEVENLABS_VOICE_ID: {ELEVENLABS_VOICE_ID}")
 print("-" * 40)
 
-# ✅ FastAPI router
 router = APIRouter()
 
-# ✅ Request schema
 class InterviewInput(BaseModel):
     resume: str
     jd: str
     round: str = "HR"
 
-# ✅ Main interview route
 @router.post("/api/start-interview")
 def start_interview(data: InterviewInput):
     try:
+        # You can customize these
         question = "Tell me about yourself."
         answer = "Sure! I'm a passionate AI developer with experience in Python, LLMs, and building full-stack AI tools..."
 
+        # Generate audio & video (these may take a few seconds each)
         audio_url = generate_elevenlabs_audio(answer)
         video_url = generate_did_video(answer)
 
+        # Both URLs may be None on error, but UI handles that gracefully
         return {
             "question": question,
             "answer": answer,
@@ -52,8 +52,6 @@ def start_interview(data: InterviewInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# ✅ ElevenLabs Audio TTS
 def generate_elevenlabs_audio(text: str) -> str:
     try:
         if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
@@ -87,15 +85,12 @@ def generate_elevenlabs_audio(text: str) -> str:
         print("❌ ElevenLabs Audio Error:", e)
         return None
 
-
-# ✅ D-ID Video Generation with Basic Auth & Avatar ID
 def generate_did_video(text: str) -> str:
     try:
         if not D_ID_API_KEY or not D_ID_AVATAR_ID:
             raise Exception("❌ D-ID: Missing API key or avatar ID")
 
         encoded_key = base64.b64encode(D_ID_API_KEY.encode()).decode()
-
         url = "https://api.d-id.com/talks"
         headers = {
             "Authorization": f"Basic {encoded_key}",
@@ -106,7 +101,7 @@ def generate_did_video(text: str) -> str:
                 "type": "text",
                 "input": text
             },
-            "avatar_id": D_ID_AVATAR_ID,  # ✅ Use avatar_id not source_url
+            "avatar_id": D_ID_AVATAR_ID,
             "config": {
                 "fluent": True,
                 "pad_audio": 0.2
@@ -120,6 +115,7 @@ def generate_did_video(text: str) -> str:
         if not talk_id:
             raise Exception("❌ D-ID API: No talk ID returned")
 
+        # Return stream endpoint for real-time video
         return f"https://api.d-id.com/talks/{talk_id}/stream"
     except Exception as e:
         print("❌ D-ID Video Error:", e)

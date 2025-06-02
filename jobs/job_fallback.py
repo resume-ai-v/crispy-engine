@@ -1,7 +1,3 @@
-# -------------------------------------
-# ✅ FILE: jobs/job_fallback.py
-# -------------------------------------
-
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -33,6 +29,7 @@ def fetch_jobs_with_gpt(keyword: str = "data scientist") -> list:
 
         import json
         jobs = json.loads(raw)
+        print(f"[fetch_jobs_with_gpt] {len(jobs)} jobs from GPT fallback")
         return jobs
     except Exception as e:
         print("❌ GPT fallback failed:", str(e))
