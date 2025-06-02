@@ -31,7 +31,7 @@ export default function Signup() {
     try {
       const full_name = `${firstName} ${lastName}`;
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/signup`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ full_name, email, password }),
@@ -46,7 +46,7 @@ export default function Signup() {
 
       localStorage.setItem('userFullName', full_name);
       localStorage.setItem('loggedInUser', email);
-      navigate('/onboarding');
+      navigate('/api/onboarding');
     } catch (err) {
       setError('❌ Server error. Please try again.');
     }
