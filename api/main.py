@@ -1,11 +1,12 @@
 from fastapi import FastAPI, UploadFile, File, Request, Body, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
+import io
 
 # ✅ Load environment variables
 load_dotenv()
@@ -13,14 +14,31 @@ load_dotenv()
 # ✅ Initialize FastAPI app
 app = FastAPI(title="Career AI Dev API")
 
-# ✅ Enable CORS for frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Change this to frontend URL in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# --------------- CORS (LOCAL + PROD AUTO-SWITCH) ---------------
+ENV = os.getenv("ENVIRONMENT", "production")  # set ENVIRONMENT=local for local dev
+
+if ENV == "local":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000"
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "https://crispy-engine-frontend.onrender.com",
+            "http://crispy-engine-frontend.onrender.com",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+# ---------------------------------------------------------------
 
 # ✅ Enable Session support
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
@@ -47,9 +65,11 @@ from ai_agents.feedback_agent.tool import evaluate_answer
 from ai_agents.resume_parser.tool import parse_resume
 from jobs.scrape_job import scrape_job_posting
 from utils.resume.pdf_exporter import text_to_pdf_bytes
+from utils.resume.docx_exporter import text_to_docx_bytes
 from utils.system.temp_storage_manager import save_temp_file
 from utils.system.notify_user import notify_missing_fields
 from utils.resume.extract_text import extract_text_from_file
+from api.playwright.auto_apply import apply_to_job_site
 
 # ✅ Pydantic input models
 class ResumeAndJD(BaseModel):
@@ -122,7 +142,7 @@ def scrape(url: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ Resume PDF Download
+# ✅ Resume PDF Download (for old direct file serving)
 @app.get("/download/{filename}")
 def download_file(filename: str):
     file_path = f"/tmp/career_ai_vault/{filename}"
@@ -155,11 +175,6 @@ async def save_onboarding(request: Request, data: dict = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-import io
-from fastapi.responses import StreamingResponse
-from utils.resume.docx_exporter import text_to_docx_bytes  # You'll create this file.
-from api.playwright.auto_apply import apply_to_job_site    # You'll create this file.
-
 # ---- Tailor Resume Endpoint ----
 class TailorInput(BaseModel):
     resume: str
@@ -170,7 +185,6 @@ class TailorInput(BaseModel):
 @app.post("/tailor-resume")
 def tailor_resume_route(data: TailorInput):
     result = tailor_resume(data.resume, data.jd)
-    # result is a dict with "tailored_resume", "original_match", "tailored_match"
     def parse_score(s):
         try:
             return int(str(s).split('%')[0].strip())
@@ -223,7 +237,7 @@ def auto_apply_route(data: AutoApplyInput):
 # ✅ Serve static files (audio, resume, etc.)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ✅ Database init
+# ✅ Database init (leave as-is if you already have migrations)
 from api.extensions.db import Base, engine
 from api.models.user import User
 Base.metadata.create_all(bind=engine)
