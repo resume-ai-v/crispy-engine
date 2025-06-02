@@ -31,8 +31,8 @@ else:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "https://crispy-engine-frontend.onrender.com",
-            "http://crispy-engine-frontend.onrender.com",
+            "https://launch-hire.vercel.app",
+            "https://launch-hire-vijays-projects-10840c84.vercel.app",
         ],
         allow_credentials=True,
         allow_methods=["*"],
