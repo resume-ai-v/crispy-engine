@@ -97,7 +97,7 @@ def root():
     return {"message": "Career AI backend is live!"}
 
 # ✅ Resume & JD Match
-@app.post("/match")
+@app.post("/api/match")
 def match(data: ResumeAndJD):
     try:
         score = match_resume_to_jd(data.resume, data.jd)
@@ -106,7 +106,7 @@ def match(data: ResumeAndJD):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ✅ Resume Text Parsing
-@app.post("/parse-resume")
+@app.post("/api/parse-resume")
 def parse_resume_text(data: ResumeAndJD):
     try:
         return {"parsed": parse_resume(data.resume)}
@@ -114,7 +114,7 @@ def parse_resume_text(data: ResumeAndJD):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ✅ File Upload Parsing
-@app.post("/parse-upload")
+@app.post("/api/parse-upload")
 def parse_resume_upload(file: UploadFile = File(...)):
     try:
         content = extract_text_from_file(file.file, file.filename)
