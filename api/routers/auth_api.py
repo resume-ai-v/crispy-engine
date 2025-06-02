@@ -12,7 +12,7 @@ class SignupModel(BaseModel):
     email: str
     password: str
 
-@router.post("api/signup")
+@router.post("/api/signup")
 def signup(user: SignupModel, db: Session = Depends(get_db)):
     # 🔐 CHECK IF EMAIL ALREADY EXISTS
     existing_user = db.query(User).filter(User.email == user.email).first()
