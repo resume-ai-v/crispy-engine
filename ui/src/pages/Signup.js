@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signup as signupApi } from './utils/api'; // adjust if your path is different
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -30,19 +31,7 @@ export default function Signup() {
 
     try {
       const full_name = `${firstName} ${lastName}`;
-
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ full_name, email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(`❌ ${data.detail || "Signup failed"}`);
-        return;
-      }
+      await signupApi(full_name, email, password);
 
       localStorage.setItem('userFullName', full_name);
       localStorage.setItem('loggedInUser', email);
