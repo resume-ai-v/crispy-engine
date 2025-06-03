@@ -1,4 +1,4 @@
-# backend/main.py
+# backend/api/main.py
 
 from fastapi import FastAPI, UploadFile, File, Request, Body, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
@@ -10,14 +10,13 @@ from dotenv import load_dotenv
 import os
 import io
 
-# ── Load environment variables (e.g. SESSION_SECRET) ───────────────────────────
+# ── Load environment variables ───────────────────────────────────────────────────
 load_dotenv()
 
-# ── Initialize FastAPI app ─────────────────────────────────────────────────────
+# ── Initialize FastAPI app ───────────────────────────────────────────────────────
 app = FastAPI(title="Career AI Dev API")
 
-# ── CORS MIDDLEWARE ────────────────────────────────────────────────────────────
-# List every front‐end Vercel domain here (no typos, no trailing slashes):
+# ── CORS MIDDLEWARE ──────────────────────────────────────────────────────────────
 PROD_ORIGINS = [
     "https://launchhire.vercel.app",
     "https://launchhire-vijays-projects-10840c84.vercel.app",
@@ -27,16 +26,16 @@ PROD_ORIGINS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=PROD_ORIGINS,  # exactly your deployed frontends
+    allow_origins=PROD_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ── SESSION MIDDLEWARE ─────────────────────────────────────────────────────────
+# ── SESSION MIDDLEWARE ────────────────────────────────────────────────────────────
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
 
-# ── IMPORT ROUTERS ──────────────────────────────────────────────────────────────
+# ── IMPORT ROUTERS ─────────────────────────────────────────────────────────────────
 from api.routers.auth_api import router as auth_router
 from api.routers.resume_api import router as resume_router
 from api.routers.feedback_api import router as feedback_router
@@ -44,7 +43,6 @@ from api.routers.jobs_api import router as jobs_router
 from api.routers.interview_api import router as interview_router
 from api.routers.apply_api import router as apply_router
 
-# Include each router under its own prefix (if applicable)
 app.include_router(auth_router)
 app.include_router(resume_router)
 app.include_router(feedback_router)
@@ -52,7 +50,7 @@ app.include_router(jobs_router)
 app.include_router(interview_router)
 app.include_router(apply_router)
 
-# ── AI & UTILS IMPORTS ──────────────────────────────────────────────────────────
+# ── AI & UTILS IMPORTS ─────────────────────────────────────────────────────────────
 from ai_agents.resume_tailor.tool import tailor_resume
 from ai_agents.jd_matcher.tool import match_resume_to_jd
 from ai_agents.feedback_agent.tool import evaluate_answer
@@ -61,11 +59,11 @@ from jobs.scrape_job import scrape_job_posting
 from utils.resume.pdf_exporter import text_to_pdf_bytes
 from utils.resume.docx_exporter import text_to_docx_bytes
 from utils.system.temp_storage_manager import save_temp_file
-from utils.system.notify_missing_fields import notify_missing_fields
+# ── We removed notify_missing_fields import here ────────────────────────────────
 from utils.resume.extract_text import extract_text_from_file
 from api.playwright.auto_apply import apply_to_job_site
 
-# ── Pydantic Request Schemas ────────────────────────────────────────────────────
+# ── Pydantic Request Schemas ───────────────────────────────────────────────────────
 class ResumeAndJD(BaseModel):
     resume: str
     jd: str
@@ -85,12 +83,12 @@ class ApplicationData(BaseModel):
     role: str = "Job"
     company: str = "Company"
 
-# ── HEALTH CHECK ─────────────────────────────────────────────────────────────────
+# ── HEALTH CHECK ───────────────────────────────────────────────────────────────────
 @app.get("/")
 def root():
     return {"message": "Career AI backend is live!"}
 
-# ── /api/match ───────────────────────────────────────────────────────────────────
+# ── /api/match ─────────────────────────────────────────────────────────────────────
 @app.post("/api/match")
 def match(data: ResumeAndJD):
     try:
@@ -99,7 +97,7 @@ def match(data: ResumeAndJD):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── /api/parse-resume ────────────────────────────────────────────────────────────
+# ── /api/parse-resume ──────────────────────────────────────────────────────────────
 @app.post("/api/parse-resume")
 def parse_resume_text(data: ResumeAndJD):
     try:
@@ -107,7 +105,7 @@ def parse_resume_text(data: ResumeAndJD):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── /api/parse-upload (file‐upload) ──────────────────────────────────────────────
+# ── /api/parse-upload (file‐upload) ────────────────────────────────────────────────
 @app.post("/api/parse-upload")
 def parse_resume_upload(file: UploadFile = File(...)):
     try:
@@ -127,7 +125,7 @@ def evaluate_answer_route(data: AnswerInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── /scrape ───────────────────────────────────────────────────────────────────────
+# ── /scrape ────────────────────────────────────────────────────────────────────────
 @app.get("/scrape")
 def scrape(url: str):
     try:
@@ -136,7 +134,7 @@ def scrape(url: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── /download/{filename} ─────────────────────────────────────────────────────────
+# ── /download/{filename} ────────────────────────────────────────────────────────────
 @app.get("/download/{filename}")
 def download_file(filename: str):
     file_path = f"/tmp/career_ai_vault/{filename}"
@@ -144,23 +142,23 @@ def download_file(filename: str):
         return FileResponse(file_path, filename=filename, media_type="application/pdf")
     return {"error": "File not found."}
 
-# ── /apply-smart ─────────────────────────────────────────────────────────────────
+# ── /apply-smart ────────────────────────────────────────────────────────────────────
 @app.post("/apply-smart")
 def apply_job(data: ApplicationData):
     try:
         tailored_resume = tailor_resume(data.resume, data.jd)
         pdf = text_to_pdf_bytes(tailored_resume)
         filename = save_temp_file(pdf, data.role, data.company, "resume")
-        notify_missing_fields(data.phone_number, data.role, ["email"])
+        # ←–– Removed notify_missing_fields(...) call here
         return {
-            "status": "resume tailored & user notified",
+            "status": "resume tailored & user notified (notify step skipped)",
             "file": filename,
             "missing": ["email"],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── /api/onboarding ──────────────────────────────────────────────────────────────
+# ── /api/onboarding ────────────────────────────────────────────────────────────────
 @app.post("/api/onboarding")
 async def save_onboarding(request: Request, data: dict = Body(...)):
     try:
@@ -192,7 +190,7 @@ def tailor_resume_route(data: TailorInput):
         "tailored_match_text": result["tailored_match"],
     }
 
-# ── /download-resume ──────────────────────────────────────────────────────────────
+# ── /download-resume ───────────────────────────────────────────────────────────────
 class DownloadInput(BaseModel):
     resume: str
     format: str = "pdf"
@@ -216,7 +214,7 @@ def download_resume(data: DownloadInput):
     else:
         raise HTTPException(status_code=400, detail="Unsupported format")
 
-# ── /auto-apply ───────────────────────────────────────────────────────────────────
+# ── /auto-apply ─────────────────────────────────────────────────────────────────────
 class AutoApplyInput(BaseModel):
     resume: str
     job_url: str
@@ -228,10 +226,10 @@ def auto_apply_route(data: AutoApplyInput):
     result = apply_to_job_site(data.resume, data.job_url, data.job_title, data.company)
     return {"status": "Auto-apply triggered", "result": result}
 
-# ── Serve static files (if you have a “static” folder) ─────────────────────────────
+# ── Serve static files ───────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ── Database initialization (SQLAlchemy) ─────────────────────────────────────────
+# ── Database initialization (SQLAlchemy) ──────────────────────────────────────────
 from api.extensions.db import Base, engine
 from api.models.user import User
 
