@@ -10,21 +10,17 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
-  // 🚨 DEBUG: Let us know which Signup.js is running!
   const handleSignup = async (e) => {
     e.preventDefault();
-    alert("You are running the **REAL** Signup.js from ui/src/pages/Signup.js!");
 
     if (!email.includes('@')) {
       setError('⚠️ Invalid email address');
       return;
     }
-
     if (password.length < 4) {
       setError('⚠️ Password must be at least 4 characters');
       return;
     }
-
     if (password !== confirmPassword) {
       setError('⚠️ Passwords do not match');
       return;
@@ -32,7 +28,6 @@ export default function Signup() {
 
     try {
       const full_name = `${firstName} ${lastName}`;
-      // 🚨 GUARANTEED: Always use Render backend, never localhost!
       const response = await fetch(
         "https://crispy-engine-1.onrender.com/api/signup",
         {
@@ -48,7 +43,6 @@ export default function Signup() {
         return;
       }
 
-      alert("Signup request went to the REAL backend!");
       localStorage.setItem('userFullName', full_name);
       localStorage.setItem('loggedInUser', email);
       navigate('/api/onboarding');

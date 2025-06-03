@@ -1,5 +1,6 @@
 // src/utils/api.js
 
+// Always use deployed backend (never localhost)
 const API_BASE = "https://crispy-engine-1.onrender.com";
 
 /**
@@ -14,6 +15,22 @@ export const signup = async (full_name, email, password) => {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Signup failed");
+  }
+  return res.json();
+};
+
+/**
+ * Login (example, implement if you have this endpoint)
+ */
+export const login = async (email, password) => {
+  const res = await fetch(`${API_BASE}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Login failed");
   }
   return res.json();
 };
@@ -51,7 +68,7 @@ export const tailorResume = async (resume, jd, role = "Generic", company = "Unkn
 };
 
 /**
- * Download Resume (PDF or DOCX)
+ * Download Resume (PDF)
  */
 export const downloadPDF = async (resumeText) => {
   const res = await fetch(`${API_BASE}/download-resume`, {
@@ -66,6 +83,9 @@ export const downloadPDF = async (resumeText) => {
   return res.blob();
 };
 
+/**
+ * Download Resume (DOCX)
+ */
 export const downloadDOCX = async (resumeText) => {
   const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
