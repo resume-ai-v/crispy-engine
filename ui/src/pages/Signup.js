@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signup as signupApi } from '../utils/api'; // path: pages/Signup.js -> utils/api.js
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -11,8 +10,10 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
+  // 🚨 DEBUG: Let us know which Signup.js is running!
   const handleSignup = async (e) => {
     e.preventDefault();
+    alert("You are running the **REAL** Signup.js from ui/src/pages/Signup.js!");
 
     if (!email.includes('@')) {
       setError('⚠️ Invalid email address');
@@ -31,8 +32,23 @@ export default function Signup() {
 
     try {
       const full_name = `${firstName} ${lastName}`;
-      await signupApi(full_name, email, password);
+      // 🚨 GUARANTEED: Always use Render backend, never localhost!
+      const response = await fetch(
+        "https://crispy-engine-1.onrender.com/api/signup",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ full_name, email, password }),
+        }
+      );
+      const data = await response.json();
 
+      if (!response.ok) {
+        setError(`❌ ${data.detail || "Signup failed"}`);
+        return;
+      }
+
+      alert("Signup request went to the REAL backend!");
       localStorage.setItem('userFullName', full_name);
       localStorage.setItem('loggedInUser', email);
       navigate('/api/onboarding');
