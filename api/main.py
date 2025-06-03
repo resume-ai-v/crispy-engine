@@ -17,6 +17,14 @@ app = FastAPI(title="Career AI Dev API")
 # --------------- CORS (LOCAL + PROD AUTO-SWITCH) ---------------
 ENV = os.getenv("ENVIRONMENT", "production")  # set ENVIRONMENT=local for local dev
 
+PROD_ORIGINS = [
+    "https://launch-hire.vercel.app",
+    "https://launchhire.vercel.app",
+    "https://launchhire-kin7rlqr5-vijays-projects-10840c84.vercel.app",
+    # Add any other deployed or preview Vercel links or custom domains here
+    # e.g. "https://your-custom-domain.com",
+]
+
 if ENV == "local":
     app.add_middleware(
         CORSMiddleware,
@@ -30,10 +38,7 @@ if ENV == "local":
 else:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "https://launch-hire.vercel.app",
-            "https://launch-hire-vijays-projects-10840c84.vercel.app",
-        ],
+        allow_origins=PROD_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
