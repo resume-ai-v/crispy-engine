@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signup as signupApi } from './utils/api'; // adjust if your path is different
+import { signup as signupApi } from '../utils/api'; // path: pages/Signup.js -> utils/api.js
 
 export default function Signup() {
   const navigate = useNavigate();
