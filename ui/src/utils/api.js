@@ -1,6 +1,7 @@
 // src/utils/api.js
 
-const API_BASE = process.env.REACT_APP_API_BASE || "";
+// 🚨 GUARANTEED: Always use deployed backend, never localhost!
+const API_BASE = "https://crispy-engine-1.onrender.com";
 
 /**
  * Resume Upload (multipart/form-data)
@@ -37,10 +38,8 @@ export const tailorResume = async (resume, jd, role = "Generic", company = "Unkn
 /**
  * Download Resume (PDF or DOCX)
  * Returns a Blob you can use for download (do NOT auto-download inside this function!)
- * Use in ResumeEditor: await downloadPDF(text, fileName) or downloadDOCX(text, fileName)
  */
 export const downloadPDF = async (resumeText, fileName = "AI_Resume") => {
-  // Try modern endpoint first
   const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -54,7 +53,6 @@ export const downloadPDF = async (resumeText, fileName = "AI_Resume") => {
 };
 
 export const downloadDOCX = async (resumeText, fileName = "AI_Resume") => {
-  // Try modern endpoint first
   const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
