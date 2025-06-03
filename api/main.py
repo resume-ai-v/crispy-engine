@@ -13,37 +13,23 @@ load_dotenv()
 
 # ✅ Initialize FastAPI app
 app = FastAPI(title="Career AI Dev API")
+from fastapi.middleware.cors import CORSMiddleware
 
-# --------------- CORS (LOCAL + PROD AUTO-SWITCH) ---------------
-ENV = os.getenv("ENVIRONMENT", "production")  # set ENVIRONMENT=local for local dev
-
+# 🚨 List ALL your Vercel frontend domains here—no typos, no trailing slashes!
 PROD_ORIGINS = [
-    "https://launch-hire.vercel.app",
     "https://launchhire.vercel.app",
+    "https://launchhire-vijays-projects-10840c84.vercel.app",
     "https://launchhire-kin7rlqr5-vijays-projects-10840c84.vercel.app",
-    # Add any other deployed or preview Vercel links or custom domains here
-    # e.g. "https://your-custom-domain.com",
+    "https://launch-hire.vercel.app",
 ]
 
-if ENV == "local":
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000"
-        ],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=PROD_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-# ---------------------------------------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=PROD_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ✅ Enable Session support
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
