@@ -13,7 +13,6 @@ load_dotenv()
 
 # ✅ Initialize FastAPI app
 app = FastAPI(title="Career AI Dev API")
-from fastapi.middleware.cors import CORSMiddleware
 
 # 🚨 List ALL your Vercel frontend domains here—no typos, no trailing slashes!
 PROD_ORIGINS = [
@@ -32,24 +31,34 @@ app.add_middleware(
 )
 
 # ✅ Enable Session support
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "super-secret-key")
+)
 
-# ✅ Include API routers
+# ====================
+# === Include Routers
+# ====================
 from api.routers.auth_api import router as auth_router
+from api.routers.onboarding_api import router as onboarding_router
+# (If you have resume_api, feedback_api, etc., include them here as well)
 from api.routers.resume_api import router as resume_router
 from api.routers.feedback_api import router as feedback_router
 from api.routers.jobs_api import router as jobs_router
 from api.routers.interview_api import router as interview_router
 from api.routers.apply_api import router as apply_router
 
-app.include_router(auth_router)
+app.include_router(auth_router)                 # /api/signup, /api/login, etc.
+app.include_router(onboarding_router, prefix="/api")  # /api/onboarding
 app.include_router(resume_router)
 app.include_router(feedback_router)
 app.include_router(jobs_router)
 app.include_router(interview_router)
 app.include_router(apply_router)
 
-# ✅ AI tools and helpers
+# ====================
+# === AI Tools & Helpers
+# ====================
 from ai_agents.resume_tailor.tool import tailor_resume
 from ai_agents.jd_matcher.tool import match_resume_to_jd
 from ai_agents.feedback_agent.tool import evaluate_answer
@@ -62,7 +71,9 @@ from utils.system.notify_user import notify_missing_fields
 from utils.resume.extract_text import extract_text_from_file
 from api.playwright.auto_apply import apply_to_job_site
 
-# ✅ Pydantic input models
+# ====================
+# === Common Pydantic Schemas
+# ====================
 class ResumeAndJD(BaseModel):
     resume: str
     jd: str
@@ -82,21 +93,29 @@ class ApplicationData(BaseModel):
     role: str = "Job"
     company: str = "Company"
 
-# ✅ Health check
+# ====================
+# === Health Check
+# ====================
 @app.get("/")
 def root():
     return {"message": "Career AI backend is live!"}
 
-# ✅ Resume & JD Match
+
+# ====================
+# === Resume & JD Match
+# ====================
 @app.post("/api/match")
-def match(data: ResumeAndJD):
+def match_resume_endpoint(data: ResumeAndJD):
     try:
         score = match_resume_to_jd(data.resume, data.jd)
         return {"match_score": score}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ Resume Text Parsing
+
+# ====================
+# === Resume Text Parsing
+# ====================
 @app.post("/api/parse-resume")
 def parse_resume_text(data: ResumeAndJD):
     try:
@@ -104,7 +123,10 @@ def parse_resume_text(data: ResumeAndJD):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ File Upload Parsing
+
+# ====================
+# === File Upload Parsing
+# ====================
 @app.post("/api/parse-upload")
 def parse_resume_upload(file: UploadFile = File(...)):
     try:
@@ -113,7 +135,10 @@ def parse_resume_upload(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ Answer Evaluation
+
+# ====================
+# === Answer Evaluation
+# ====================
 @app.post("/api/evaluate")
 def evaluate_answer_route(data: AnswerInput):
     try:
@@ -124,16 +149,22 @@ def evaluate_answer_route(data: AnswerInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ JD Scraper
-@app.get("/scrape")
-def scrape(url: str):
+
+# ====================
+# === JD Scraper
+# ====================
+@app.get("/api/scrape")
+def scrape_endpoint(url: str):
     try:
         jd, role, company = scrape_job_posting(url)
         return {"jd": jd, "role": role, "company": company}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ Resume PDF Download (for old direct file serving)
+
+# ====================
+# === Resume PDF Download (Legacy)
+# ====================
 @app.get("/download/{filename}")
 def download_file(filename: str):
     file_path = f"/tmp/career_ai_vault/{filename}"
@@ -141,7 +172,10 @@ def download_file(filename: str):
         return FileResponse(file_path, filename=filename, media_type="application/pdf")
     return {"error": "File not found."}
 
-# ✅ Smart Job Application
+
+# ====================
+# === Smart Job Application (auto‐apply)
+# ====================
 @app.post("/apply-smart")
 def apply_job(data: ApplicationData):
     try:
@@ -157,16 +191,10 @@ def apply_job(data: ApplicationData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ Onboarding session
-@app.post("/onboarding")
-async def save_onboarding(request: Request, data: dict = Body(...)):
-    try:
-        request.session["onboarding"] = data
-        return {"status": "success", "message": "Onboarding data saved in session"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-# ---- Tailor Resume Endpoint ----
+# ====================
+# === Tailor Resume Endpoint
+# ====================
 class TailorInput(BaseModel):
     resume: str
     jd: str
@@ -189,7 +217,10 @@ def tailor_resume_route(data: TailorInput):
         "tailored_match_text": result["tailored_match"],
     }
 
-# ---- Download Resume Endpoint (PDF/DOCX) ----
+
+# ====================
+# === Download Resume Endpoint (PDF/DOCX)
+# ====================
 class DownloadInput(BaseModel):
     resume: str
     format: str = "pdf"
@@ -213,7 +244,10 @@ def download_resume(data: DownloadInput):
     else:
         raise HTTPException(status_code=400, detail="Unsupported format")
 
-# ---- Auto-Apply via Playwright ----
+
+# ====================
+# === Auto‐Apply via Playwright
+# ====================
 class AutoApplyInput(BaseModel):
     resume: str
     job_url: str
@@ -225,10 +259,17 @@ def auto_apply_route(data: AutoApplyInput):
     result = apply_to_job_site(data.resume, data.job_url, data.job_title, data.company)
     return {"status": "Auto-apply triggered", "result": result}
 
-# ✅ Serve static files (audio, resume, etc.)
+
+# ====================
+# === Serve Static Files (audio, resume PDFs, etc.)
+# ====================
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ✅ Database init (leave as-is if you already have migrations)
+
+# ====================
+# === Database Initialization
+# ====================
 from api.extensions.db import Base, engine
 from api.models.user import User
+
 Base.metadata.create_all(bind=engine)

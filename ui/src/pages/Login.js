@@ -1,40 +1,29 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { login } from "../utils/api";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     if (!email || !password) {
-      setError('⚠️ Please enter both email and password.');
+      setError("⚠️ Please enter both email and password.");
       return;
     }
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(`❌ ${data.detail || "Login failed"}`);
-        return;
-      }
-
-      localStorage.setItem('loggedInUser', email);
-      localStorage.setItem('userFullName', data.full_name || email);
-      setError('');
-      navigate('/onboarding');
+      const data = await login(email, password);
+      localStorage.setItem("loggedInUser", email);
+      localStorage.setItem("userFullName", data.full_name || email);
+      setError("");
+      navigate("/onboarding");
     } catch (err) {
-      setError('❌ Server error. Please try again.');
+      setError(`❌ ${err.message || "Login failed"}`);
     }
   };
 
@@ -74,7 +63,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-sm mt-4">
-          Don’t have an account?{' '}
+          Don’t have an account?{" "}
           <a href="/signup" className="text-purple-600 font-medium hover:underline">
             Sign Up
           </a>

@@ -1,24 +1,27 @@
-# backend/onboarding_api.py
-
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 from typing import List
 
 router = APIRouter()
 
-# Define the request body schema
 class OnboardingData(BaseModel):
     firstStepSelections: List[str]
     educationStatus: str
     fieldOfStudy: str
     skills: List[str]
+    resumeName: str
     preferredRoles: List[str]
     employmentTypes: List[str]
     preferredCities: List[str]
 
 @router.post("/onboarding")
 async def save_onboarding(data: OnboardingData, request: Request):
-    # Save to session for now (later: save to DB)
-    request.session["onboarding_data"] = data.dict()
-
-    return {"status": "success"}
+    """
+    This endpoint saves the onboarding data into the session (for now).
+    Later, you can persist to the database or call some service.
+    """
+    try:
+        request.session["onboarding_data"] = data.dict()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

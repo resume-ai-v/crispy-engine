@@ -1,29 +1,32 @@
-import React, { useState } from 'react';
-import Select from 'react-select';
-import onboardingImage from '../assets/onboarding-image.jpg';
+import React, { useState } from "react";
+import Select from "react-select";
+import onboardingImage from "../assets/onboarding-image.jpg";
+import { submitOnboarding } from "../utils/api";
+import { useNavigate } from "react-router-dom";
 
 const skillsOptions = [
-  { value: 'Python', label: 'Python' },
-  { value: 'Data Science', label: 'Data Science' },
-  { value: 'Django', label: 'Django' },
-  { value: 'Product Design', label: 'Product Design' },
+  { value: "Python", label: "Python" },
+  { value: "Data Science", label: "Data Science" },
+  { value: "Django", label: "Django" },
+  { value: "Product Design", label: "Product Design" },
 ];
 
 const jobRolesOptions = [
-  { value: 'Software Developer', label: 'Software Developer' },
-  { value: 'Product Designer', label: 'Product Designer' },
+  { value: "Software Developer", label: "Software Developer" },
+  { value: "Product Designer", label: "Product Designer" },
 ];
 
 const citiesOptions = [
-  { value: 'Boston', label: 'Boston' },
-  { value: 'New York', label: 'New York' },
+  { value: "Boston", label: "Boston" },
+  { value: "New York", label: "New York" },
 ];
 
 export default function Onboarding() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [firstStepSelections, setFirstStepSelections] = useState([]);
-  const [educationStatus, setEducationStatus] = useState('');
-  const [fieldOfStudy, setFieldOfStudy] = useState('');
+  const [educationStatus, setEducationStatus] = useState("");
+  const [fieldOfStudy, setFieldOfStudy] = useState("");
   const [skills, setSkills] = useState([]);
   const [resume, setResume] = useState(null);
   const [preferredRoles, setPreferredRoles] = useState([]);
@@ -32,25 +35,25 @@ export default function Onboarding() {
   const [showModal, setShowModal] = useState(false);
 
   const handleCheckboxToggle = (value) => {
-    setFirstStepSelections(prev =>
+    setFirstStepSelections((prev) =>
       prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]
     );
   };
 
   const handleEmploymentTypeToggle = (value) => {
-    setEmploymentTypes(prev =>
+    setEmploymentTypes((prev) =>
       prev.includes(value) ? prev.filter((type) => type !== value) : [...prev, value]
     );
   };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (file && file.type === 'application/pdf') {
+    if (file && file.type === "application/pdf") {
       setResume(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        localStorage.setItem('resumeFile', reader.result);
-        localStorage.setItem('resumeName', file.name);
+        localStorage.setItem("resumeFile", reader.result);
+        localStorage.setItem("resumeName", file.name);
       };
       reader.readAsDataURL(file);
     }
@@ -61,25 +64,16 @@ export default function Onboarding() {
       firstStepSelections,
       educationStatus,
       fieldOfStudy,
-      skills: skills.map(s => s.value),
+      skills: skills.map((s) => s.value),
       resumeName: resume?.name || "No resume",
-      preferredRoles: preferredRoles.map(r => r.value),
+      preferredRoles: preferredRoles.map((r) => r.value),
       employmentTypes,
-      preferredCities: preferredCities.map(c => c.value),
+      preferredCities: preferredCities.map((c) => c.value),
     };
 
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/onboarding`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include", // ⚠️ IMPORTANT: Enables session middleware support
-        body: JSON.stringify(onboardingData)
-      });
-
-      const result = await res.json();
-      if (res.ok && result.status === "success") {
+      const result = await submitOnboarding(onboardingData);
+      if (result.status === "success") {
         setShowModal(true);
       } else {
         alert("Something went wrong while saving your onboarding info.");
@@ -126,13 +120,13 @@ export default function Onboarding() {
             Whether you're job hunting, practicing interviews, or polishing your resume we'll guide you every step.
           </p>
           <div className="flex gap-3 justify-center mb-6">
-            {['Find my First Job', 'Practice Interviews', 'Build My Resume'].map((item) => (
+            {["Find my First Job", "Practice Interviews", "Build My Resume"].map((item) => (
               <button
                 key={item}
                 className={`border px-4 py-2 rounded-full text-sm transition-all duration-150 ${
                   firstStepSelections.includes(item)
-                    ? 'bg-purple-100 text-purple-600 border-purple-600'
-                    : 'text-gray-600 border-gray-300'
+                    ? "bg-purple-100 text-purple-600 border-purple-600"
+                    : "text-gray-600 border-gray-300"
                 }`}
                 onClick={() => handleCheckboxToggle(item)}
               >
@@ -141,8 +135,12 @@ export default function Onboarding() {
             ))}
           </div>
           <div className="flex justify-center gap-4">
-            <button onClick={() => setStep(1)} className="bg-gray-200 px-6 py-2 rounded">Back</button>
-            <button onClick={() => setStep(3)} className="bg-purple-600 text-white px-6 py-2 rounded">Next</button>
+            <button onClick={() => setStep(1)} className="bg-gray-200 px-6 py-2 rounded">
+              Back
+            </button>
+            <button onClick={() => setStep(3)} className="bg-purple-600 text-white px-6 py-2 rounded">
+              Next
+            </button>
           </div>
         </div>
       )}
@@ -182,13 +180,24 @@ export default function Onboarding() {
               placeholder="Select Skills"
             />
             <div className="mt-4">
-              <label className="block text-sm mb-1 font-medium text-gray-700">Upload Resume (PDF only)</label>
-              <input type="file" accept="application/pdf" onChange={handleFileUpload} className="w-full border border-gray-300 p-2 rounded" />
+              <label className="block text-sm mb-1 font-medium text-gray-700">
+                Upload Resume (PDF only)
+              </label>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileUpload}
+                className="w-full border border-gray-300 p-2 rounded"
+              />
             </div>
           </div>
           <div className="flex justify-center gap-4 mt-6">
-            <button onClick={() => setStep(2)} className="bg-gray-200 px-6 py-2 rounded">Back</button>
-            <button onClick={() => setStep(4)} className="bg-purple-600 text-white px-6 py-2 rounded">Next</button>
+            <button onClick={() => setStep(2)} className="bg-gray-200 px-6 py-2 rounded">
+              Back
+            </button>
+            <button onClick={() => setStep(4)} className="bg-purple-600 text-white px-6 py-2 rounded">
+              Next
+            </button>
           </div>
         </div>
       )}
@@ -208,13 +217,13 @@ export default function Onboarding() {
             />
 
             <div className="flex gap-3">
-              {['Remote', 'Hybrid', 'Onsite'].map((type) => (
+              {["Remote", "Hybrid", "Onsite"].map((type) => (
                 <button
                   key={type}
                   className={`px-4 py-2 rounded-full border text-sm ${
                     employmentTypes.includes(type)
-                      ? 'bg-purple-100 text-purple-600 border-purple-600'
-                      : 'text-gray-600 border-gray-300'
+                      ? "bg-purple-100 text-purple-600 border-purple-600"
+                      : "text-gray-600 border-gray-300"
                   }`}
                   onClick={() => handleEmploymentTypeToggle(type)}
                 >
@@ -233,8 +242,12 @@ export default function Onboarding() {
           </div>
 
           <div className="flex justify-center gap-4 mt-6">
-            <button onClick={() => setStep(3)} className="bg-gray-200 px-6 py-2 rounded">Back</button>
-            <button onClick={handleSubmit} className="bg-purple-600 text-white px-6 py-2 rounded">Submit</button>
+            <button onClick={() => setStep(3)} className="bg-gray-200 px-6 py-2 rounded">
+              Back
+            </button>
+            <button onClick={handleSubmit} className="bg-purple-600 text-white px-6 py-2 rounded">
+              Submit
+            </button>
           </div>
         </div>
       )}
@@ -248,7 +261,7 @@ export default function Onboarding() {
               Your dashboard is ready with job matches, interview practices, and resume boosters. Take your first step today!
             </p>
             <button
-              onClick={() => window.location.href = '/recommended-jobs'}
+              onClick={() => navigate("/recommended-jobs")}
               className="bg-purple-600 text-white px-6 py-2 rounded"
             >
               Explore Job Board

@@ -1,44 +1,28 @@
-// src/pages/RecommendedJobs.js
-
 import React, { useEffect, useState } from "react";
 import JobCard from "../components/JobCard";
+import { fetchJobs } from "../utils/api";
 
 export default function RecommendedJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // User’s resume from localStorage/session
+  // Assume the user’s resume text was stored in localStorage
   const resume = localStorage.getItem("resumeText") || "";
 
   useEffect(() => {
-    async function fetchJobs() {
+    async function loadJobs() {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch(
-          `${process.env.REACT_APP_API_BASE || ""}/api/jobs`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              resume,
-              sort_by: "TopMatched",
-            }),
-          }
-        );
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || "Failed to fetch jobs");
-        }
-        const data = await res.json();
+        const data = await fetchJobs(resume);
         setJobs(data);
       } catch (err) {
         setError(err.message || "Unknown error");
       }
       setLoading(false);
     }
-    fetchJobs();
+    loadJobs();
   }, [resume]);
 
   return (
@@ -49,7 +33,7 @@ export default function RecommendedJobs() {
           <div className="text-gray-600 mt-2">
             <span className="font-semibold">{jobs.length} Jobs Found</span>
             <br />
-            <span>All Matches your Job Preferences</span>
+            <span>All match your job preferences</span>
           </div>
         </div>
         <button
@@ -57,12 +41,7 @@ export default function RecommendedJobs() {
           onClick={() => alert("Edit Preferences coming soon!")}
         >
           <span className="mr-2">Edit Preferences</span>
-          <svg
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-          >
+          <svg width="20" height="20" fill="none" stroke="currentColor">
             <path d="M3 6h13M3 12h13M3 18h13" />
           </svg>
         </button>
