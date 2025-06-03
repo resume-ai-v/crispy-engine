@@ -1,7 +1,5 @@
-// src/utils/api.js
-
-// Always point to your Render backend here:
-const API_BASE = process.env.REACT_APP_API_BASE || "https://crispy-engine-1.onrender.com";
+// Always use deployed backend (never localhost)
+const API_BASE = "https://crispy-engine-1.onrender.com";
 
 /**
  * Signup (new user)
@@ -20,7 +18,7 @@ export const signup = async (full_name, email, password) => {
 };
 
 /**
- * Login (if you have /api/login)
+ * Login (real, not dummy)
  */
 export const login = async (email, password) => {
   const res = await fetch(`${API_BASE}/api/login`, {
@@ -36,21 +34,23 @@ export const login = async (email, password) => {
 };
 
 /**
- * Upload Resume ‒ /api/parse-upload
+ * Resume Upload (multipart/form-data)
  */
 export const uploadResume = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch(`${API_BASE}/api/parse-upload`, {
+
+  const res = await fetch(`${API_BASE}/api/upload-resume`, {
     method: "POST",
     body: formData,
   });
+
   if (!res.ok) throw new Error("Resume upload failed");
   return res.json();
 };
 
 /**
- * Tailor Resume ‒ /tailor-resume
+ * Tailor Resume with GPT
  */
 export const tailorResume = async (resume, jd, role = "Generic", company = "Unknown") => {
   const res = await fetch(`${API_BASE}/tailor-resume`, {
@@ -66,7 +66,7 @@ export const tailorResume = async (resume, jd, role = "Generic", company = "Unkn
 };
 
 /**
- * Download Resume as PDF ‒ /download-resume
+ * Download Resume (PDF or DOCX)
  */
 export const downloadPDF = async (resumeText) => {
   const res = await fetch(`${API_BASE}/download-resume`, {
@@ -81,9 +81,6 @@ export const downloadPDF = async (resumeText) => {
   return res.blob();
 };
 
-/**
- * Download Resume as DOCX ‒ /download-resume
- */
 export const downloadDOCX = async (resumeText) => {
   const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
@@ -98,7 +95,7 @@ export const downloadDOCX = async (resumeText) => {
 };
 
 /**
- * Auto-Apply to Job ‒ /auto-apply
+ * Auto-Apply to Job
  */
 export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
   const res = await fetch(`${API_BASE}/auto-apply`, {
@@ -114,7 +111,7 @@ export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
 };
 
 /**
- * Generate AI-Based Resume (DOCX) ‒ /api/generate-resume
+ * Generate AI-Based Resume (DOCX)
  */
 export const generateResume = async (name, job_description) => {
   const res = await fetch(`${API_BASE}/api/generate-resume`, {
@@ -122,15 +119,16 @@ export const generateResume = async (name, job_description) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, job_description }),
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Resume generation failed");
   }
-  return res.blob(); // comes back as .docx
+  return res.blob();
 };
 
 /**
- * Match Resume to Job Description ‒ /api/match
+ * Match Resume to Job Description
  */
 export const matchResumeToJD = async (resume, jd) => {
   const res = await fetch(`${API_BASE}/api/match`, {
@@ -138,6 +136,7 @@ export const matchResumeToJD = async (resume, jd) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ resume, jd }),
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Resume–JD match failed");
@@ -146,14 +145,14 @@ export const matchResumeToJD = async (resume, jd) => {
 };
 
 /**
- * Submit Onboarding Details ‒ /api/onboarding
+ * Submit Onboarding Details
  */
 export const submitOnboarding = async (data) => {
   const res = await fetch(`${API_BASE}/api/onboarding`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include", // so that SessionMiddleware can see it
     body: JSON.stringify(data),
+    credentials: "include"
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -163,7 +162,7 @@ export const submitOnboarding = async (data) => {
 };
 
 /**
- * Evaluate Interview Answer for Feedback ‒ /api/evaluate
+ * Evaluate Interview Answer for Feedback
  */
 export const evaluateAnswer = async (answer, jd = "Generic") => {
   const res = await fetch(`${API_BASE}/api/evaluate`, {
@@ -171,6 +170,7 @@ export const evaluateAnswer = async (answer, jd = "Generic") => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ answer, jd }),
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Evaluation failed");
@@ -179,7 +179,7 @@ export const evaluateAnswer = async (answer, jd = "Generic") => {
 };
 
 /**
- * Fetch AI-Generated Interview Questions ‒ /api/generate-questions
+ * Fetch AI-Generated Interview Questions
  */
 export const fetchInterviewQuestions = async (jobTitle) => {
   const res = await fetch(`${API_BASE}/api/generate-questions`, {
@@ -187,6 +187,7 @@ export const fetchInterviewQuestions = async (jobTitle) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ job_title: jobTitle }),
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Question generation failed");
@@ -195,7 +196,7 @@ export const fetchInterviewQuestions = async (jobTitle) => {
 };
 
 /**
- * Fetch Job Listings Based on Resume ‒ /api/jobs
+ * Fetch Job Listings Based on Resume
  */
 export const fetchJobs = async (resume) => {
   const res = await fetch(`${API_BASE}/api/jobs`, {
@@ -203,6 +204,7 @@ export const fetchJobs = async (resume) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ resume }),
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Job fetching failed");
@@ -211,7 +213,7 @@ export const fetchJobs = async (resume) => {
 };
 
 /**
- * Get Job Details (with GPT Explanation) ‒ /api/job/{id}
+ * Get Job Details (with GPT Explanation)
  */
 export const getJobDetail = async (jobId, resumeText) => {
   const res = await fetch(`${API_BASE}/api/job/${jobId}`, {
@@ -219,6 +221,7 @@ export const getJobDetail = async (jobId, resumeText) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ resume: resumeText }),
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Fetching job detail failed");
@@ -227,7 +230,7 @@ export const getJobDetail = async (jobId, resumeText) => {
 };
 
 /**
- * Legacy “apply to job” ‒ /api/apply-to-job
+ * Legacy “apply to job”
  */
 export const applyToJob = async (data) => {
   const res = await fetch(`${API_BASE}/api/apply-to-job`, {

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from typing import List
 
@@ -9,19 +9,12 @@ class OnboardingData(BaseModel):
     educationStatus: str
     fieldOfStudy: str
     skills: List[str]
-    resumeName: str
+    resumeName: str = ""
     preferredRoles: List[str]
     employmentTypes: List[str]
     preferredCities: List[str]
 
-@router.post("/onboarding")
+@router.post("/api/onboarding")
 async def save_onboarding(data: OnboardingData, request: Request):
-    """
-    This endpoint saves the onboarding data into the session (for now).
-    Later, you can persist to the database or call some service.
-    """
-    try:
-        request.session["onboarding_data"] = data.dict()
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    request.session["onboarding_data"] = data.dict()
+    return {"status": "success"}

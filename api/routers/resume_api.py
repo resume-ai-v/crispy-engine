@@ -1,40 +1,14 @@
-# api/routers/resume_api.py
-
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from utils.resume.extract_text import extract_text_from_file
+from ai_agents.resume_parser.tool import parse_resume
 
 router = APIRouter()
 
-
-class ResumePayload(BaseModel):
-    resume: str
-    jd: str
-
-
-@router.post("/tailor-resume")
-async def tailor_resume_route(data: ResumePayload):
-    """
-    Endpoint: POST /tailor-resume
-    Expects JSON: { "resume": "<the resume text>", "jd": "<the job description>" }
-
-    Returns JSON:
-      {
-        "tailored_resume": "<GPT-tailored résumé>",
-        "original_match": "<X% Match – explanation>",
-        "tailored_match": "<Y% Match – explanation>"
-      }
-    """
-    if not data.resume or not data.jd:
-        raise HTTPException(status_code=400, detail="Missing 'resume' or 'jd' field.")
-
-    # Import the function from our updated ai_agents code
-    from ai_agents.resume_tailor.tool import tailor_resume
-
+@router.post("/api/upload-resume")
+async def upload_resume(file: UploadFile = File(...)):
     try:
-        result = tailor_resume(data.resume, data.jd)
-        return result
+        content = extract_text_from_file(file.file, file.filename)
+        parsed = parse_resume(content)
+        return {"parsed": parsed}
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Something went wrong while tailoring the résumé. {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))

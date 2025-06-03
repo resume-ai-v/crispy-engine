@@ -1,31 +1,14 @@
-from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException, Body
 from ai_agents.feedback_agent.tool import evaluate_answer
-from utils.feedback_exporter import generate_feedback_pdf
-from pydantic import BaseModel
-import io
 
 router = APIRouter()
 
-class FeedbackRequest(BaseModel):
-    answer: str
-    jd: str
-    user_name: str = "Candidate"
-
-@router.post("/api/feedback-report")
-def generate_feedback_report(data: FeedbackRequest):
-    feedback = evaluate_answer(data.answer, data.jd)
-    pdf_bytes = generate_feedback_pdf(feedback, user_name=data.user_name)
-
-    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf",
-                              headers={"Content-Disposition": f"attachment; filename=feedback_report.pdf"})
-
-# ✅ Add missing route used in UI
-class EvaluateRequest(BaseModel):
-    answer: str
-    jd: str
-
 @router.post("/api/evaluate")
-def evaluate_answer_route(data: EvaluateRequest):
-    feedback = evaluate_answer(data.answer, data.jd)
-    return {"feedback": feedback}
+def evaluate_answer_route(data: dict = Body(...)):
+    try:
+        if not data.get('answer') or not data.get('jd'):
+            raise HTTPException(status_code=422, detail="Missing answer or JD in request body.")
+        feedback = evaluate_answer(data['answer'], data['jd'])
+        return {"feedback": feedback}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
