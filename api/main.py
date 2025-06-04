@@ -9,19 +9,15 @@ load_dotenv()
 
 app = FastAPI(title="Career AI Dev API")
 
-PROD_ORIGINS = [
-    "https://launchhire.vercel.app",
-    "https://launchhire-vijays-projects-10840c84.vercel.app",
-    "https://launchhire-kin7rlqr5-vijays-projects-10840c84.vercel.app",
-    "https://launch-hire.vercel.app",
-]
+# -- CORS FIX: Allow all Vercel subdomains, production safe --
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=PROD_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
 
 from api.routers.auth_api import router as auth_router

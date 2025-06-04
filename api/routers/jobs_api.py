@@ -11,8 +11,6 @@ def query_jsearch(resume, limit=10, location="United States"):
     """
     Queries JSearch for jobs matching the user's resume.
     """
-    # You can adjust the query logic to extract keywords from the resume using AI for even better matching.
-    # For now, we'll use the resume text as a generic keyword query.
     url = f"https://{JSEARCH_API_HOST}/search"
     headers = {
         "X-RapidAPI-Key": JSEARCH_API_KEY,
@@ -27,10 +25,11 @@ def query_jsearch(resume, limit=10, location="United States"):
         "limit": limit
     }
     resp = requests.get(url, headers=headers, params=params)
+    if resp.status_code in [401, 403]:
+        raise Exception("JSearch API key/host error: Check your credentials or quota.")
     if resp.status_code != 200:
         raise Exception(f"JSearch API error: {resp.text}")
     data = resp.json()
-    # You may need to adjust parsing based on the actual API response format.
     jobs = []
     for result in data.get("data", []):
         jobs.append({
@@ -39,7 +38,7 @@ def query_jsearch(resume, limit=10, location="United States"):
             "company": result.get("employer_name", ""),
             "location": result.get("job_city", "") or result.get("job_country", ""),
             "salary": result.get("job_min_salary", "") or "N/A",
-            "description": result.get("job_description", "")[:300],  # Shorten for preview
+            "description": result.get("job_description", "")[:300],
             "link": result.get("job_apply_link", ""),
             "posted_at": result.get("job_posted_at_datetime_utc", ""),
         })
@@ -51,10 +50,8 @@ def get_jobs(data: dict = Body(...)):
     Production endpoint: returns job recommendations based on resume using JSearch (RapidAPI).
     """
     try:
-        resume = data.get("resume", "")
+        resume = data.get("resume", "").strip()
         jobs = query_jsearch(resume)
-        return jobs
+        return jobs or []
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Job search failed: {str(e)}")
-
-# Other endpoints below (if needed)
