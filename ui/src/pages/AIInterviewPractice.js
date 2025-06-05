@@ -1,11 +1,9 @@
-// src/pages/AIInterviewPractice.js
-
 import React, { useState } from "react";
 import UserDropdown from "../components/UserDropdown";
 import AvatarPlayer from "../components/AvatarPlayer";
-import { evaluateAnswer as evaluateAnswerAPI } from "../utils/api";
+import { evaluateAnswer as evaluateAnswerAPI, API_BASE } from "../utils/api";
 
-// Interview rounds config
+// --- Define Interview Rounds ---
 const INTERVIEW_ROUNDS = [
   {
     id: "coding",
@@ -63,12 +61,12 @@ export default function AIInterviewPractice() {
   const [feedback, setFeedback] = useState("");
   const [avatarVideoUrl, setAvatarVideoUrl] = useState("");
   const [avatarAudioUrl, setAvatarAudioUrl] = useState("");
-  const [loadingRoundId, setLoadingRoundId] = useState(null); // Track only loading button
-  const [feedbackLoading, setFeedbackLoading] = useState(false); // Separate feedback loading
+  const [loadingRoundId, setLoadingRoundId] = useState(null); // Track which round is loading
+  const [feedbackLoading, setFeedbackLoading] = useState(false); // For feedback button
 
   const resumeText = localStorage.getItem("resumeText") || "";
 
-  // Start the interview and load avatar (video/audio)
+  // --- Start AI Avatar Interview (call backend) ---
   const startAvatarInterview = async (round) => {
     setLoadingRoundId(round.id);
     setFeedback("");
@@ -77,7 +75,7 @@ export default function AIInterviewPractice() {
     setAvatarVideoUrl("");
     setAvatarAudioUrl("");
     try {
-      const res = await fetch("/api/start-interview", {
+      const res = await fetch(`${API_BASE}/api/start-interview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -86,6 +84,7 @@ export default function AIInterviewPractice() {
           round: round.avatarRound,
         }),
       });
+      if (!res.ok) throw new Error("Failed to start");
       const data = await res.json();
       setSelectedRound(round);
       setQuestion(data.question);
@@ -100,7 +99,7 @@ export default function AIInterviewPractice() {
     }
   };
 
-  // Get AI feedback for the answer
+  // --- Get AI Feedback for answer ---
   const evaluateAnswer = async () => {
     if (!question || !answer) return;
     setFeedbackLoading(true);
@@ -114,7 +113,7 @@ export default function AIInterviewPractice() {
     }
   };
 
-  // Main UI
+  // --- UI ---
   return (
     <main className="flex-1 overflow-y-auto p-8">
       <div className="flex justify-between items-center mb-8">
@@ -125,7 +124,7 @@ export default function AIInterviewPractice() {
         <UserDropdown />
       </div>
 
-      {/* Cards Grid */}
+      {/* Show Interview Rounds as cards if not in a round */}
       {!selectedRound && (
         <div>
           <div className="text-lg font-semibold text-gray-700 mb-4">
@@ -180,7 +179,7 @@ export default function AIInterviewPractice() {
         </div>
       )}
 
-      {/* Interview Q&A Panel */}
+      {/* Show Q&A if in a round */}
       {selectedRound && (
         <div className="max-w-3xl mx-auto mt-10 bg-white rounded-xl shadow p-8">
           <div className="mb-4 flex justify-between items-center">

@@ -7,22 +7,13 @@ import os
 import base64
 import requests
 
-# ✅ Load .env from root directory
+# Load .env
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../../.env'))
 
-# ✅ Retrieve environment variables
 D_ID_API_KEY = os.getenv("D_ID_API_KEY")  # Format: username:password
 D_ID_AVATAR_ID = os.getenv("D_ID_AVATAR_ID")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
-
-# ✅ Environment Debug Check
-print("\n🔍 ENV CHECK")
-print(f"D_ID_API_KEY: {'✅ Loaded' if D_ID_API_KEY else '❌ Missing'}")
-print(f"D_ID_AVATAR_ID: {D_ID_AVATAR_ID}")
-print(f"ELEVENLABS_API_KEY: {'✅ Loaded' if ELEVENLABS_API_KEY else '❌ Missing'}")
-print(f"ELEVENLABS_VOICE_ID: {ELEVENLABS_VOICE_ID}")
-print("-" * 40)
 
 router = APIRouter()
 
@@ -34,15 +25,12 @@ class InterviewInput(BaseModel):
 @router.post("/api/start-interview")
 def start_interview(data: InterviewInput):
     try:
-        # You can customize these
+        # Example—customize logic per round/resume if you want
         question = "Tell me about yourself."
         answer = "Sure! I'm a passionate AI developer with experience in Python, LLMs, and building full-stack AI tools..."
 
-        # Generate audio & video (these may take a few seconds each)
         audio_url = generate_elevenlabs_audio(answer)
         video_url = generate_did_video(answer)
-
-        # Both URLs may be None on error, but UI handles that gracefully
         return {
             "question": question,
             "answer": answer,
@@ -97,25 +85,16 @@ def generate_did_video(text: str) -> str:
             "Content-Type": "application/json"
         }
         payload = {
-            "script": {
-                "type": "text",
-                "input": text
-            },
+            "script": {"type": "text", "input": text},
             "avatar_id": D_ID_AVATAR_ID,
-            "config": {
-                "fluent": True,
-                "pad_audio": 0.2
-            }
+            "config": {"fluent": True, "pad_audio": 0.2}
         }
-
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
 
         talk_id = response.json().get("id")
         if not talk_id:
             raise Exception("❌ D-ID API: No talk ID returned")
-
-        # Return stream endpoint for real-time video
         return f"https://api.d-id.com/talks/{talk_id}/stream"
     except Exception as e:
         print("❌ D-ID Video Error:", e)

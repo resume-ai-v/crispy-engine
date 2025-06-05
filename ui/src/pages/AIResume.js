@@ -1,13 +1,12 @@
-// src/pages/AIResume.js
-
 import React, { useState, useEffect } from "react";
 import ResumeCard from "../components/ResumeCard";
-import { tailorResume, downloadPDF, downloadDOCX } from "../utils/api";
+import { uploadResume, tailorResume, downloadPDF, downloadDOCX } from "../utils/api";
 import { FaDownload } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 export default function AIResume() {
   const [resumeInput, setResumeInput] = useState(() => localStorage.getItem("resumeText") || "");
+  const [uploading, setUploading] = useState(false);
   const [jobDescription, setJobDescription] = useState("");
   const [tailoredResume, setTailoredResume] = useState("");
   const [originalMatch, setOriginalMatch] = useState(null);
@@ -20,6 +19,22 @@ export default function AIResume() {
   useEffect(() => {
     localStorage.setItem("resumeText", resumeInput);
   }, [resumeInput]);
+
+  // Handle resume file upload (PDF/DOCX/TXT)
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await uploadResume(file);
+      setResumeInput(res.parsed || res.raw || "");
+      localStorage.setItem("resumeText", res.parsed || res.raw || "");
+      alert("✅ Resume uploaded and parsed successfully!");
+    } catch (err) {
+      alert("❌ Failed to upload/parse resume.");
+    }
+    setUploading(false);
+  };
 
   // Handle AI tailoring
   const handleTailor = async () => {
@@ -48,11 +63,20 @@ export default function AIResume() {
       return;
     }
     try {
+      let blob;
       if (format === "pdf") {
-        await downloadPDF(textToDownload, "AI_Resume");
+        blob = await downloadPDF(textToDownload);
       } else if (format === "docx") {
-        await downloadDOCX(textToDownload, "AI_Resume");
+        blob = await downloadDOCX(textToDownload);
       }
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `AI_Resume.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       alert("❌ Download failed. Please try again.");
     }
@@ -65,7 +89,24 @@ export default function AIResume() {
         <section className="w-full max-w-lg bg-white rounded-2xl shadow p-8 flex flex-col justify-start">
           <h1 className="text-3xl font-bold mb-6 text-gray-900">AI-Powered Resume Tailoring</h1>
           <div className="mb-5">
-            <label className="block font-semibold mb-1">Your Resume (Plain Text):</label>
+            <label className="block font-semibold mb-1">Your Resume (PDF/DOCX/Text):</label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                onChange={handleResumeUpload}
+                className="block"
+                disabled={uploading}
+              />
+              {uploading && <span className="text-xs text-purple-700">Uploading…</span>}
+              <button
+                className="ml-auto text-sm bg-purple-100 px-2 py-1 rounded"
+                onClick={() => setResumeInput("")}
+                type="button"
+              >
+                Clear
+              </button>
+            </div>
             <textarea
               className="w-full p-3 border border-gray-200 rounded-lg h-32 focus:outline-none focus:ring focus:border-purple-400"
               value={resumeInput}
@@ -118,7 +159,6 @@ export default function AIResume() {
               >
                 <FaDownload /> DOCX
               </button>
-              {/* Resume Editor Button */}
               <button
                 className="bg-purple-100 text-purple-700 px-4 py-1 rounded ml-2 hover:bg-purple-200"
                 onClick={() => navigate("/resume-editor")}
