@@ -21,7 +21,7 @@ def extract_keywords_gpt(resume):
     )
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # Change to gpt-4 if available and desired
+            model="gpt-3.5-turbo",  # Use "gpt-4" if you have access
             messages=[
                 {"role": "system", "content": "You are an expert resume parser."},
                 {"role": "user", "content": prompt}
@@ -29,13 +29,14 @@ def extract_keywords_gpt(resume):
             max_tokens=32,
             temperature=0.2,
         )
-        result = response["choices"][0]["message"]["content"]
-        # Only take first line/first phrase, remove explanations or sentences
+        result = response["choices"][0]["message"]["content"].strip()
+        # Clean up: Only take first line/first phrase, remove explanations or sentences
         if "," in result:
             # Top 3 skills/keywords
             return ",".join([kw.strip() for kw in result.split(",")[:3]])
-        return result.strip().split("\n")[0][:48]  # Never longer than 48 chars
+        return result.split("\n")[0][:48]  # Never longer than 48 chars
     except Exception as e:
+        print(f"❌ GPT extraction failed: {e}")
         # Fallback: just "Software Engineer"
         return "Software Engineer"
 
