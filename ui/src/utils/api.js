@@ -1,5 +1,4 @@
 // Always use deployed backend (never localhost)
-const API_BASE = "https://crispy-engine-1.onrender.com";
 export const API_BASE = "https://crispy-engine-1.onrender.com";
 
 /**
