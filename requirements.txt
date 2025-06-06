@@ -237,3 +237,4 @@ pydantic[email]
 fpdf
 python-docx
 aiosqlite
+passlib
