@@ -36,6 +36,9 @@ app.include_router(interview_router)
 app.include_router(apply_router)
 app.include_router(onboarding_router)
 
+from api.routers.match_api import router as match_router
+app.include_router(match_router)
+
 @app.get("/")
 def root():
     return {"message": "Career AI backend is live!"}

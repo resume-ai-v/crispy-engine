@@ -1,25 +1,20 @@
-import React, { useState } from "react";
-import Select from "react-select";
+import React, { useState, useEffect } from "react";
+import AsyncSelect from "react-select/async";
 import onboardingImage from "../assets/onboarding-image.jpg";
-import { submitOnboarding } from "../utils/api";
+import { submitOnboarding, getOnboarding } from "../utils/api";
 import { useNavigate } from "react-router-dom";
 
-const skillsOptions = [
-  { value: "Python", label: "Python" },
-  { value: "Data Science", label: "Data Science" },
-  { value: "Django", label: "Django" },
-  { value: "Product Design", label: "Product Design" },
-];
-
-const jobRolesOptions = [
-  { value: "Software Developer", label: "Software Developer" },
-  { value: "Product Designer", label: "Product Designer" },
-];
-
-const citiesOptions = [
-  { value: "Boston", label: "Boston" },
-  { value: "New York", label: "New York" },
-];
+// Dynamic async options loader for skills, roles, and cities
+const fetchOptions = (endpoint) => async (input) => {
+  if (!input || input.length < 2) return [];
+  try {
+    const res = await fetch(`https://crispy-engine-1.onrender.com/api/suggest/${endpoint}?q=${encodeURIComponent(input)}`);
+    const data = await res.json();
+    return (data.options || []).map((val) => ({ value: val, label: val }));
+  } catch {
+    return [];
+  }
+};
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -33,6 +28,25 @@ export default function Onboarding() {
   const [employmentTypes, setEmploymentTypes] = useState([]);
   const [preferredCities, setPreferredCities] = useState([]);
   const [showModal, setShowModal] = useState(false);
+
+  // Prefill onboarding data if it exists
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await getOnboarding();
+        if (data && Object.keys(data).length) {
+          setFirstStepSelections(data.firstStepSelections || []);
+          setEducationStatus(data.educationStatus || "");
+          setFieldOfStudy(data.fieldOfStudy || "");
+          setSkills((data.skills || []).map(s => ({ value: s, label: s })));
+          setPreferredRoles((data.preferredRoles || []).map(r => ({ value: r, label: r })));
+          setEmploymentTypes(data.employmentTypes || []);
+          setPreferredCities((data.preferredCities || []).map(c => ({ value: c, label: c })));
+        }
+      } catch {/* ignore */}
+    }
+    load();
+  }, []);
 
   const handleCheckboxToggle = (value) => {
     setFirstStepSelections((prev) =>
@@ -172,12 +186,14 @@ export default function Onboarding() {
               <option value="Business">Business</option>
               <option value="Design">Design</option>
             </select>
-            <Select
+            <AsyncSelect
               isMulti
-              options={skillsOptions}
+              cacheOptions
+              defaultOptions
+              loadOptions={fetchOptions("skills")}
               value={skills}
               onChange={setSkills}
-              placeholder="Select Skills"
+              placeholder="Search & select your top skills"
             />
             <div className="mt-4">
               <label className="block text-sm mb-1 font-medium text-gray-700">
@@ -208,12 +224,14 @@ export default function Onboarding() {
           <p className="text-gray-600 mb-6">Choose the roles and cities you love, we’ll find the best matches for you.</p>
 
           <div className="space-y-4">
-            <Select
+            <AsyncSelect
               isMulti
-              options={jobRolesOptions}
+              cacheOptions
+              defaultOptions
+              loadOptions={fetchOptions("roles")}
               value={preferredRoles}
               onChange={setPreferredRoles}
-              placeholder="Select Preferred Job Roles"
+              placeholder="Search & select preferred job roles"
             />
 
             <div className="flex gap-3">
@@ -232,12 +250,14 @@ export default function Onboarding() {
               ))}
             </div>
 
-            <Select
+            <AsyncSelect
               isMulti
-              options={citiesOptions}
+              cacheOptions
+              defaultOptions
+              loadOptions={fetchOptions("cities")}
               value={preferredCities}
               onChange={setPreferredCities}
-              placeholder="Select Preferred Cities"
+              placeholder="Search & select preferred cities"
             />
           </div>
 

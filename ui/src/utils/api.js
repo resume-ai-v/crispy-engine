@@ -1,36 +1,72 @@
-// Always use deployed backend (never localhost)
 export const API_BASE = "https://crispy-engine-1.onrender.com";
 
-/**
- * Signup (new user)
- */
+// Helper: get JWT from localStorage
+const getJWT = () => localStorage.getItem("jwt");
+
+// Helper: attach Authorization if JWT present
+const withAuth = (headers = {}) => {
+  const jwt = getJWT();
+  return jwt ? { ...headers, Authorization: `Bearer ${jwt}` } : headers;
+};
+
+// Signup (new user)
 export const signup = async (full_name, email, password) => {
   const res = await fetch(`${API_BASE}/api/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ full_name, email, password }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Signup failed");
-  }
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Signup failed");
+  if (data.access_token) localStorage.setItem("jwt", data.access_token);
+  return data;
 };
 
-/**
- * Login (real, not dummy)
- */
+// Login (real, not dummy)
 export const login = async (email, password) => {
   const res = await fetch(`${API_BASE}/api/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Login failed");
-  }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Login failed");
+  if (data.access_token) localStorage.setItem("jwt", data.access_token);
+  return data;
+};
+
+// Submit Onboarding Details (JWT required)
+export const submitOnboarding = async (data) => {
+  const res = await fetch(`${API_BASE}/api/onboarding`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify(data),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.detail || "Onboarding submission failed");
+  return result;
+};
+
+// Fetch User Onboarding Details (JWT required)
+export const getOnboarding = async () => {
+  const res = await fetch(`${API_BASE}/api/onboarding`, {
+    method: "GET",
+    headers: withAuth(),
+  });
+  if (!res.ok) return {};
   return res.json();
+};
+
+// Update Preferences (JWT required, PATCH)
+export const updatePreferences = async (data) => {
+  const res = await fetch(`${API_BASE}/api/preferences`, {
+    method: "PATCH",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify(data),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.detail || "Preferences update failed");
+  return result;
 };
 
 /**
@@ -42,6 +78,7 @@ export const uploadResume = async (file) => {
 
   const res = await fetch(`${API_BASE}/api/upload-resume`, {
     method: "POST",
+    headers: withAuth(),
     body: formData,
   });
 
@@ -55,7 +92,7 @@ export const uploadResume = async (file) => {
 export const tailorResume = async (resume, jd, role = "Generic", company = "Unknown") => {
   const res = await fetch(`${API_BASE}/tailor-resume`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume, jd, role, company }),
   });
   if (!res.ok) {
@@ -71,7 +108,7 @@ export const tailorResume = async (resume, jd, role = "Generic", company = "Unkn
 export const downloadPDF = async (resumeText) => {
   const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume: resumeText, format: "pdf" }),
   });
   if (!res.ok) {
@@ -84,7 +121,7 @@ export const downloadPDF = async (resumeText) => {
 export const downloadDOCX = async (resumeText) => {
   const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume: resumeText, format: "docx" }),
   });
   if (!res.ok) {
@@ -100,7 +137,7 @@ export const downloadDOCX = async (resumeText) => {
 export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
   const res = await fetch(`${API_BASE}/auto-apply`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume, job_url, job_title, company }),
   });
   if (!res.ok) {
@@ -116,7 +153,7 @@ export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
 export const generateResume = async (name, job_description) => {
   const res = await fetch(`${API_BASE}/api/generate-resume`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ name, job_description }),
   });
 
@@ -133,7 +170,7 @@ export const generateResume = async (name, job_description) => {
 export const matchResumeToJD = async (resume, jd) => {
   const res = await fetch(`${API_BASE}/api/match`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume, jd }),
   });
 
@@ -145,29 +182,12 @@ export const matchResumeToJD = async (resume, jd) => {
 };
 
 /**
- * Submit Onboarding Details
- */
-export const submitOnboarding = async (data) => {
-  const res = await fetch(`${API_BASE}/api/onboarding`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-    credentials: "include"
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Onboarding submission failed");
-  }
-  return res.json();
-};
-
-/**
  * Evaluate Interview Answer for Feedback
  */
 export const evaluateAnswer = async (answer, jd = "Generic") => {
   const res = await fetch(`${API_BASE}/api/evaluate`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ answer, jd }),
   });
 
@@ -184,7 +204,7 @@ export const evaluateAnswer = async (answer, jd = "Generic") => {
 export const fetchInterviewQuestions = async (jobTitle) => {
   const res = await fetch(`${API_BASE}/api/generate-questions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ job_title: jobTitle }),
   });
 
@@ -196,13 +216,13 @@ export const fetchInterviewQuestions = async (jobTitle) => {
 };
 
 /**
- * Fetch Job Listings Based on Resume
+ * Fetch Job Listings Based on Resume/Preferences
  */
-export const fetchJobs = async (resume) => {
+export const fetchJobs = async (resume, preferredRoles = [], preferredCities = [], employmentTypes = []) => {
   const res = await fetch(`${API_BASE}/api/jobs`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resume }),
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ resume, preferredRoles, preferredCities, employmentTypes }),
   });
 
   if (!res.ok) {
@@ -218,7 +238,7 @@ export const fetchJobs = async (resume) => {
 export const getJobDetail = async (jobId, resumeText) => {
   const res = await fetch(`${API_BASE}/api/job/${jobId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume: resumeText }),
   });
 
@@ -235,7 +255,7 @@ export const getJobDetail = async (jobId, resumeText) => {
 export const applyToJob = async (data) => {
   const res = await fetch(`${API_BASE}/api/apply-to-job`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
