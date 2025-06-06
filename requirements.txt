@@ -236,3 +236,4 @@ passlib[bcrypt]
 pydantic[email]
 fpdf
 python-docx
+aiosqlite
