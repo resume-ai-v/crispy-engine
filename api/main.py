@@ -48,7 +48,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 import asyncio
 from sqlalchemy.ext.asyncio import AsyncEngine
-from models import Base  # adjust if Base is elsewhere
+from api.models.user import Base  # ✅ Correct
+
 
 async def init_models():
     async with engine.begin() as conn:
