@@ -45,6 +45,16 @@ def root():
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-from api.extensions.db import Base, engine
-from api.models.user import User
-Base.metadata.create_all(bind=engine)
+
+import asyncio
+from sqlalchemy.ext.asyncio import AsyncEngine
+from models import Base  # adjust if Base is elsewhere
+
+async def init_models():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+# Run the model initialization when app starts
+@app.on_event("startup")
+async def startup_event():
+    await init_models()
