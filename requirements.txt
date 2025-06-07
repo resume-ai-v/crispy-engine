@@ -240,3 +240,5 @@ aiosqlite
 passlib==1.7.4
 python-jose
 psycopg2-binary
+asyncpg>=0.27
+asyncpg
