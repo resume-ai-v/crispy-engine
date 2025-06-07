@@ -8,14 +8,13 @@ from pydantic import BaseModel, EmailStr
 import jwt
 import os
 from datetime import datetime, timedelta
-from jose import JWTError
 import re
 
 router = APIRouter()
 JWT_SECRET = os.getenv("JWT_SECRET", "change-this-in-prod")
 JWT_ALGORITHM = "HS256"
 
-# Password strength checker (replace Passlib policy)
+# Password strength checker (no external dependencies)
 def check_password_strength(password: str) -> bool:
     # At least 8 characters, 1 uppercase, 1 number
     if len(password) < 8:
@@ -57,7 +56,9 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_asyn
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         return user
-    except JWTError:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="JWT token has expired")
+    except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid JWT token")
 
 @router.post("/api/signup")
@@ -95,7 +96,7 @@ async def login(login: LoginModel, db: AsyncSession = Depends(get_async_db)):
     access_token = create_access_token({"sub": user.email})
     return {"message": "✅ Login successful", "access_token": access_token, "full_name": user.full_name}
 
-# --- Optionally plug in SlowAPI for rate limiting in prod ---
+# --- (Optional) SlowAPI Rate Limiting Example ---
 # from slowapi import Limiter
 # from slowapi.util import get_remote_address
 # limiter = Limiter(key_func=get_remote_address)
