@@ -238,3 +238,4 @@ fpdf
 python-docx
 aiosqlite
 passlib==1.7.4
+python-jose
