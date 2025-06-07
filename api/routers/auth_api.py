@@ -8,17 +8,23 @@ from pydantic import BaseModel, EmailStr
 import jwt
 import os
 from datetime import datetime, timedelta
-from passlib.password_strength import PasswordPolicy
 from jose import JWTError
+import re
 
 router = APIRouter()
 JWT_SECRET = os.getenv("JWT_SECRET", "change-this-in-prod")
 JWT_ALGORITHM = "HS256"
 
-# Strong password policy: at least 8 chars, 1 uppercase, 1 number
-policy = PasswordPolicy.from_names(
-    length=8, uppercase=1, numbers=1, special=0,
-)
+# Password strength checker (replace Passlib policy)
+def check_password_strength(password: str) -> bool:
+    # At least 8 characters, 1 uppercase, 1 number
+    if len(password) < 8:
+        return False
+    if not re.search(r"[A-Z]", password):
+        return False
+    if not re.search(r"\d", password):
+        return False
+    return True
 
 class SignupModel(BaseModel):
     full_name: str
@@ -57,8 +63,7 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_asyn
 @router.post("/api/signup")
 async def signup(user: SignupModel, db: AsyncSession = Depends(get_async_db)):
     # Check if password is strong
-    policy_test = policy.test(user.password)
-    if policy_test:
+    if not check_password_strength(user.password):
         raise HTTPException(
             status_code=400,
             detail="Password must be at least 8 chars, incl. uppercase and number.",
