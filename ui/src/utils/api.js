@@ -231,23 +231,6 @@ export const fetchJobs = async (resume, preferredRoles = [], preferredCities = [
   }
   return res.json();
 };
-/**
- * Generate AI-Powered Cover Letter
- */
-export const generateCoverLetter = async (data) => {
-  const res = await fetch(`${API_BASE}/api/generate-cover-letter`, {
-    method: "POST",
-    headers: withAuth({ "Content-Type": "application/json" }),
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to generate cover letter.");
-  }
-  return res.json();
-};
-
 
 /**
  * Get Job Details (with GPT Explanation)
@@ -278,6 +261,22 @@ export const applyToJob = async (data) => {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Job application failed");
+  }
+  return res.json();
+};
+/**
+ * Generate AI-Powered Cover Letter
+ */
+export const generateCoverLetter = async (data) => {
+  const res = await fetch(`${API_BASE}/api/generate-cover-letter`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to generate cover letter.");
   }
   return res.json();
 };
