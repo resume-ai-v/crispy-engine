@@ -90,7 +90,7 @@ export const uploadResume = async (file) => {
  * Tailor Resume with GPT
  */
 export const tailorResume = async (resume, jd, role = "Generic", company = "Unknown") => {
-  const res = await fetch(`${API_BASE}/tailor-resume`, {
+  const res = await fetch(`${API_BASE}/api/tailor-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume, jd, role, company }),
@@ -106,7 +106,7 @@ export const tailorResume = async (resume, jd, role = "Generic", company = "Unkn
  * Download Resume (PDF or DOCX)
  */
 export const downloadPDF = async (resumeText) => {
-  const res = await fetch(`${API_BASE}/download-resume`, {
+  const res = await fetch(`${API_BASE}/api/download-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume: resumeText, format: "pdf" }),
@@ -119,7 +119,7 @@ export const downloadPDF = async (resumeText) => {
 };
 
 export const downloadDOCX = async (resumeText) => {
-  const res = await fetch(`${API_BASE}/download-resume`, {
+  const res = await fetch(`${API_BASE}/api/download-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume: resumeText, format: "docx" }),
@@ -135,7 +135,7 @@ export const downloadDOCX = async (resumeText) => {
  * Auto-Apply to Job
  */
 export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
-  const res = await fetch(`${API_BASE}/auto-apply`, {
+  const res = await fetch(`${API_BASE}/api/auto-apply`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume, job_url, job_title, company }),
@@ -231,6 +231,23 @@ export const fetchJobs = async (resume, preferredRoles = [], preferredCities = [
   }
   return res.json();
 };
+/**
+ * Generate AI-Powered Cover Letter
+ */
+export const generateCoverLetter = async (data) => {
+  const res = await fetch(`${API_BASE}/api/generate-cover-letter`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to generate cover letter.");
+  }
+  return res.json();
+};
+
 
 /**
  * Get Job Details (with GPT Explanation)

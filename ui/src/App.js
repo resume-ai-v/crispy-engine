@@ -13,6 +13,7 @@ import ApplyPage from "./pages/ApplyPage";
 import Sidebar from "./components/Sidebar";
 import InlineEditor from "./pages/InlineEditor";
 import ResumeEditor from "./components/ResumeEditor"; // FIXED: use pages, not components
+import CoverLetterGenerator from './pages/CoverLetterGenerator';
 
 function LayoutWithSidebar({ children, active }) {
   return (
@@ -34,6 +35,7 @@ function AppRoutes() {
       <Route path="/" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/cover-letter-generator" element={<CoverLetterGenerator />} />
 
       {/* Sidebar layout pages */}
       <Route

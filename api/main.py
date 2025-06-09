@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -25,7 +25,7 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "su
 # Static file mounting (if needed)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ✅ Import and register routers
+# ✅ Import routers
 from api.routers.auth_api import router as auth_router
 from api.routers.resume_api import router as resume_router
 from api.routers.feedback_api import router as feedback_router
@@ -35,14 +35,19 @@ from api.routers.apply_api import router as apply_router
 from api.routers.onboarding_api import router as onboarding_router
 from api.routers.match_api import router as match_router
 
-app.include_router(auth_router)
-app.include_router(resume_router)
-app.include_router(feedback_router)
-app.include_router(jobs_router)
-app.include_router(interview_router)
-app.include_router(apply_router)
-app.include_router(onboarding_router)
-app.include_router(match_router)
+# ✅ Create a main API router and include other routers with the /api prefix
+api_router = APIRouter(prefix="/api")
+
+api_router.include_router(auth_router)
+api_router.include_router(resume_router)
+api_router.include_router(feedback_router)
+api_router.include_router(jobs_router)
+api_router.include_router(interview_router)
+api_router.include_router(apply_router)
+api_router.include_router(onboarding_router)
+api_router.include_router(match_router)
+
+app.include_router(api_router)
 
 # ✅ Health check route
 @app.get("/")

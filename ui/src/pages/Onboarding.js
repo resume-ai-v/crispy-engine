@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import AsyncSelect from "react-select/async";
 import onboardingImage from "../assets/onboarding-image.jpg";
-import { submitOnboarding, getOnboarding } from "../utils/api";
+import { submitOnboarding, getOnboarding, API_BASE } from "../utils/api"; // Import API_BASE
 import { useNavigate } from "react-router-dom";
 
-// Dynamic async options loader for skills, roles, and cities
+// Dynamic async options loader for skills, roles, and cities (FIXED)
 const fetchOptions = (endpoint) => async (input) => {
   if (!input || input.length < 2) return [];
   try {
-    const res = await fetch(`https://crispy-engine-1.onrender.com/api/suggest/${endpoint}?q=${encodeURIComponent(input)}`);
+    // FIX: Use the API_BASE constant for a reliable URL
+    const res = await fetch(`${API_BASE}/api/suggest/${endpoint}?q=${encodeURIComponent(input)}`);
     const data = await res.json();
     return (data.options || []).map((val) => ({ value: val, label: val }));
   } catch {
@@ -29,6 +30,7 @@ export default function Onboarding() {
   const [preferredCities, setPreferredCities] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
+  // The rest of your component logic remains the same...
   // Prefill onboarding data if it exists
   useEffect(() => {
     async function load() {

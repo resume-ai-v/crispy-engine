@@ -19,7 +19,7 @@ export default function Sidebar({ active }) {
                 : "text-gray-700"
             }`}
           >
-            <FaSuitcase /> Recommend Jobs
+            <FaSuitcase /> Recommended Jobs
           </NavLink>
 
           <NavLink
@@ -31,6 +31,10 @@ export default function Sidebar({ active }) {
             }`}
           >
             <FaRobot /> AI Interview Practice
+          </NavLink>
+
+          <NavLink to="/cover-letter-generator" className={({ isActive }) => linkClasses(isActive)}>
+            <FiFileText className="mr-3" /> Cover Letter
           </NavLink>
 
           <NavLink

@@ -1,101 +1,119 @@
+import os
+import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
 from uuid import uuid4
 from dotenv import load_dotenv
-import os
-import base64
-import requests
+import base64  # Ensure base64 is imported
+import time
 
-# Load .env
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../../.env'))
+# Load .env from the project's root directory
+load_dotenv()
 
-D_ID_API_KEY = os.getenv("D_ID_API_KEY")  # Format: username:password
+router = APIRouter()
+
+# --- Environment Variable Checks ---
+D_ID_API_KEY = os.getenv("D_ID_API_KEY")
 D_ID_AVATAR_ID = os.getenv("D_ID_AVATAR_ID")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 
-router = APIRouter()
+
+def generate_did_video(text: str) -> str:
+    """
+    Generates a video from text using D-ID's API, correctly encoding the API key
+    and waiting for the video generation to complete.
+    """
+    if not D_ID_API_KEY or not D_ID_AVATAR_ID:
+        print("⚠️ D-ID credentials not found or incomplete in .env file. Skipping video generation.")
+        return None
+
+    # --- Correctly encode the 'email:password' style key to Base64 ---
+    encoded_api_key = base64.b64encode(D_ID_API_KEY.encode("utf-8")).decode("utf-8")
+
+    # --- Step 1: Create the video generation talk ---
+    create_url = "https://api.d-id.com/talks"
+    headers = {
+        "Authorization": f"Basic {encoded_api_key}",  # Use the Base64 encoded key
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "script": {
+            "type": "text",
+            "input": text,
+            "provider": {
+                "type": "elevenlabs",
+                "voice_id": ELEVENLABS_VOICE_ID
+            }
+        },
+        "avatar_id": D_ID_AVATAR_ID,
+        "config": {"fluent": "false", "pad_audio": "0.0"}
+    }
+
+    try:
+        print("🚀 Starting D-ID video generation...")
+        create_response = requests.post(create_url, headers=headers, json=payload, timeout=30)
+        create_response.raise_for_status()
+        talk_id = create_response.json().get("id")
+        print(f"✅ D-ID talk created with ID: {talk_id}")
+    except Exception as e:
+        error_details = create_response.text if 'create_response' in locals() else str(e)
+        print(f"❌ D-ID Video Creation Error: {error_details}")
+        raise HTTPException(status_code=500, detail=f"Failed to create D-ID video: {error_details}")
+
+    # --- Step 2: Poll for the result ---
+    get_url = f"https://api.d-id.com/talks/{talk_id}"
+
+    for i in range(30):  # Poll for up to 5 minutes
+        try:
+            print(f" polling for talk {talk_id} (Attempt {i + 1}/30)")
+            get_response = requests.get(get_url, headers=headers, timeout=30)
+            get_response.raise_for_status()
+            result = get_response.json()
+
+            if result.get("status") == "done":
+                video_url = result.get("result_url")
+                print(f"✅ D-ID video is ready: {video_url}")
+                return video_url
+            elif result.get("status") == "error":
+                error_details = result.get('error', 'Unknown D-ID error')
+                print(f"❌ D-ID video generation failed with error: {error_details}")
+                raise HTTPException(status_code=500, detail=f"D-ID video generation failed: {error_details}")
+
+            time.sleep(10)
+        except Exception as e:
+            error_details = get_response.text if 'get_response' in locals() else str(e)
+            print(f"❌ D-ID polling error: {error_details}")
+            raise HTTPException(status_code=500, detail=f"Error while checking video status: {error_details}")
+
+    print("❌ D-ID video generation timed out after 5 minutes.")
+    raise HTTPException(status_code=504, detail="Video generation timed out.")
+
 
 class InterviewInput(BaseModel):
     resume: str
     jd: str
-    round: str = "HR"
+    round: str = "hr"
 
-@router.post("/api/start-interview")
+
+@router.post("/start-interview")
 def start_interview(data: InterviewInput):
     try:
-        # Example—customize logic per round/resume if you want
-        question = "Tell me about yourself."
-        answer = "Sure! I'm a passionate AI developer with experience in Python, LLMs, and building full-stack AI tools..."
+        question = "Tell me about a challenging project you've worked on."
+        script_for_avatar = "Of course. Let me tell you about a challenging project I worked on recently."
 
-        audio_url = generate_elevenlabs_audio(answer)
-        video_url = generate_did_video(answer)
+        video_url = generate_did_video(script_for_avatar)
+
         return {
             "question": question,
-            "answer": answer,
-            "audio_url": audio_url,
-            "video_url": video_url
+            "video_url": video_url,
+            "audio_url": None
         }
+    except HTTPException as e:
+        # Re-raise HTTPException to propagate the specific error and status code
+        raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-def generate_elevenlabs_audio(text: str) -> str:
-    try:
-        if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
-            raise Exception("❌ ElevenLabs: Missing API key or voice ID")
-
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}/stream"
-        headers = {
-            "xi-api-key": ELEVENLABS_API_KEY,
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "text": text,
-            "voice_settings": {
-                "stability": 0.5,
-                "similarity_boost": 0.75
-            }
-        }
-
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-
-        Path("static").mkdir(parents=True, exist_ok=True)
-        filename = f"audio_{uuid4().hex}.mp3"
-        filepath = f"static/{filename}"
-
-        with open(filepath, "wb") as f:
-            f.write(response.content)
-
-        return f"/static/{filename}"
-    except Exception as e:
-        print("❌ ElevenLabs Audio Error:", e)
-        return None
-
-def generate_did_video(text: str) -> str:
-    try:
-        if not D_ID_API_KEY or not D_ID_AVATAR_ID:
-            raise Exception("❌ D-ID: Missing API key or avatar ID")
-
-        encoded_key = base64.b64encode(D_ID_API_KEY.encode()).decode()
-        url = "https://api.d-id.com/talks"
-        headers = {
-            "Authorization": f"Basic {encoded_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "script": {"type": "text", "input": text},
-            "avatar_id": D_ID_AVATAR_ID,
-            "config": {"fluent": True, "pad_audio": 0.2}
-        }
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-
-        talk_id = response.json().get("id")
-        if not talk_id:
-            raise Exception("❌ D-ID API: No talk ID returned")
-        return f"https://api.d-id.com/talks/{talk_id}/stream"
-    except Exception as e:
-        print("❌ D-ID Video Error:", e)
-        return None
+        # Catch any other unexpected errors
+        print(f"An unexpected error occurred in start_interview: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected server error occurred: {str(e)}")
