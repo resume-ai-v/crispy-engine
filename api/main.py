@@ -10,10 +10,12 @@ load_dotenv()
 
 app = FastAPI(title="Career AI Dev API")
 
-# CORS Middleware – allow all Vercel subdomains (production safe)
+# --- THIS IS THE FIX ---
+# We are explicitly listing your frontend's exact URL from the error screenshot.
+# This is more reliable than using a regular expression for CORS.
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=["https://crispy-engine.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +40,8 @@ from api.routers.match_api import router as match_router
 # ✅ Create a main API router and include other routers with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# --- CORRECTED ROUTER INCLUSION ---
+# The variables for each router are now correctly referenced
 api_router.include_router(auth_router)
 api_router.include_router(resume_router)
 api_router.include_router(feedback_router)
@@ -55,8 +59,8 @@ def root():
     return {"message": "Career AI backend is live!"}
 
 # ✅ Async DB initialization
-from api.extensions.db import engine  # <--- Add this import
-from api.models.user import Base      # <--- Your declarative Base model
+from api.extensions.db import engine
+from api.models.user import Base
 
 async def init_models():
     async with engine.begin() as conn:
