@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from sqlalchemy.orm import Session
@@ -7,7 +7,6 @@ from api.routers.auth_api import get_current_user
 
 router = APIRouter()
 
-# === Onboarding Data Model === #
 class OnboardingData(BaseModel):
     firstStepSelections: Optional[List[str]] = Field(default_factory=list)
     educationStatus: Optional[str] = ""
@@ -18,7 +17,7 @@ class OnboardingData(BaseModel):
     employmentTypes: Optional[List[str]] = Field(default_factory=list)
     preferredCities: Optional[List[str]] = Field(default_factory=list)
 
-@router.post("/api/onboarding")
+@router.post("/onboarding")
 async def save_onboarding(
     data: OnboardingData,
     db: Session = Depends(get_db),
@@ -31,14 +30,14 @@ async def save_onboarding(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to save onboarding data: {str(e)}")
 
-@router.get("/api/onboarding")
+@router.get("/onboarding")
 async def get_onboarding(
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
     return user.onboarding_data or {}
 
-# === Autocomplete Data === #
+# --- Suggest endpoints (autocomplete for select fields) ---
 SKILLS = [
     "Python", "Java", "JavaScript", "React", "Node.js", "SQL", "C++", "C#", "AWS", "Django",
     "Flask", "FastAPI", "Machine Learning", "Deep Learning", "Data Analysis", "TensorFlow",
@@ -60,17 +59,17 @@ def search_options(options, q):
     q_lower = q.lower()
     return [opt for opt in options if q_lower in opt.lower()][:10]
 
-@router.get("/api/suggest/skills")
+@router.get("/suggest/skills")
 async def suggest_skills(q: str = Query(..., min_length=1)):
     matches = search_options(SKILLS, q)
     return {"options": matches}
 
-@router.get("/api/suggest/roles")
+@router.get("/suggest/roles")
 async def suggest_roles(q: str = Query(..., min_length=1)):
     matches = search_options(ROLES, q)
     return {"options": matches}
 
-@router.get("/api/suggest/cities")
+@router.get("/suggest/cities")
 async def suggest_cities(q: str = Query(..., min_length=1)):
     matches = search_options(CITIES, q)
     return {"options": matches}
