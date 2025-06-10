@@ -9,12 +9,11 @@ load_dotenv()
 
 app = FastAPI(title="Career AI Dev API")
 
-# --- CORS: No trailing slash! ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://launchhire.vercel.app",      # ✅ No slash
-        "http://localhost:3000",              # ✅ Add for local dev (optional)
+        "https://launchhire.vercel.app",
+        "http://localhost:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -24,15 +23,15 @@ app.add_middleware(
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Routers
-from api.routers.auth_api import router as auth_router
-from api.routers.resume_api import router as resume_router
-from api.routers.feedback_api import router as feedback_router
-from api.routers.jobs_api import router as jobs_router
-from api.routers.interview_api import router as interview_router
-from api.routers.apply_api import router as apply_router
-from api.routers.onboarding_api import router as onboarding_router
-from api.routers.match_api import router as match_router
+# FIXED imports: No "api." prefix if main.py is inside api/!
+from routers.auth_api import router as auth_router
+from routers.resume_api import router as resume_router
+from routers.feedback_api import router as feedback_router
+from routers.jobs_api import router as jobs_router
+from routers.interview_api import router as interview_router
+from routers.apply_api import router as apply_router
+from routers.onboarding_api import router as onboarding_router
+from routers.match_api import router as match_router
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(auth_router)
@@ -50,9 +49,8 @@ app.include_router(api_router)
 def root():
     return {"message": "Career AI backend is live!"}
 
-# Async DB init
-from api.extensions.db import engine
-from api.models.user import Base
+from extensions.db import engine
+from models.user import Base
 
 async def init_models():
     async with engine.begin() as conn:
