@@ -10,12 +10,11 @@ load_dotenv()
 
 app = FastAPI(title="Career AI Dev API")
 
-# --- THIS IS THE FIX ---
-# We are explicitly listing your frontend's exact URL from the error screenshot.
-# This is more reliable than using a regular expression for CORS.
+# --- CORS FIX ---
+# Explicitly listing your frontend's exact URL.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://crispy-engine.vercel.app"],
+    allow_origins=["https://launchhire.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,8 +39,8 @@ from api.routers.match_api import router as match_router
 # ✅ Create a main API router and include other routers with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-# --- CORRECTED ROUTER INCLUSION ---
-# The variables for each router are now correctly referenced
+# --- THIS SECTION IS NOW CORRECTED ---
+# The variables for each router are now correctly referenced.
 api_router.include_router(auth_router)
 api_router.include_router(resume_router)
 api_router.include_router(feedback_router)
