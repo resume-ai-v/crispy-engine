@@ -1,4 +1,4 @@
-export const API_BASE = "https://crispy-engine-1.onrender.com/api";
+export const API_BASE = "https://crispy-engine-nx6e.onrender.com/api";
 
 // Helper: get JWT from localStorage
 const getJWT = () => localStorage.getItem("jwt");
