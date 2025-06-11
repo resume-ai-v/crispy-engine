@@ -1,15 +1,17 @@
 export const API_BASE = "https://crispy-engine-nx6e.onrender.com/api";
 
-// Helper: get session-token from localStorage
+// --- Helper: Get session-token (MVP, not JWT) ---
 const getToken = () => localStorage.getItem("token");
 
-// Attach Authorization header if token present (MVP session token)
+// --- Helper: Attach Authorization header if token present ---
 const withAuth = (headers = {}) => {
   const token = getToken();
   return token ? { ...headers, Authorization: token } : headers;
 };
 
-// Signup (new user)
+// --- Auth ---
+
+// Signup (first_name/last_name for current backend)
 export const signup = async (first_name, last_name, email, password) => {
   const res = await fetch(`${API_BASE}/signup`, {
     method: "POST",
@@ -18,7 +20,7 @@ export const signup = async (first_name, last_name, email, password) => {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || "Signup failed");
-  if (data.token) localStorage.setItem("token", data.token); // Save MVP session token!
+  if (data.token) localStorage.setItem("token", data.token); // Save session-token!
   return data;
 };
 
@@ -35,24 +37,28 @@ export const login = async (email, password) => {
   return data;
 };
 
-// Suggest endpoints (no auth required!)
+// --- Suggestions (no auth required!) ---
+
 export const suggestSkills = async (query) => {
   const res = await fetch(`${API_BASE}/suggest/skills?q=${encodeURIComponent(query)}`);
   if (!res.ok) throw new Error("Failed to fetch skills");
   return (await res.json()).options || [];
 };
+
 export const suggestRoles = async (query) => {
   const res = await fetch(`${API_BASE}/suggest/roles?q=${encodeURIComponent(query)}`);
   if (!res.ok) throw new Error("Failed to fetch roles");
   return (await res.json()).options || [];
 };
+
 export const suggestCities = async (query) => {
   const res = await fetch(`${API_BASE}/suggest/cities?q=${encodeURIComponent(query)}`);
   if (!res.ok) throw new Error("Failed to fetch cities");
   return (await res.json()).options || [];
 };
 
-// Onboarding (AUTH REQUIRED!)
+// --- Onboarding (auth required) ---
+
 export const submitOnboarding = async (data) => {
   const res = await fetch(`${API_BASE}/onboarding`, {
     method: "POST",
@@ -70,5 +76,179 @@ export const getOnboarding = async () => {
     headers: withAuth(),
   });
   if (!res.ok) return {};
+  return res.json();
+};
+
+// --- Resume Upload (auth required) ---
+export const uploadResume = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${API_BASE}/upload-resume`, {
+    method: "POST",
+    headers: withAuth(), // Content-Type is set automatically for FormData
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error("Resume upload failed");
+  return res.json();
+};
+
+// --- Download Resume (PDF/DOCX) ---
+export const downloadPDF = async (resumeText) => {
+  const res = await fetch(`${API_BASE}/download-resume`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ resume: resumeText, format: "pdf" }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "PDF download failed");
+  }
+  return res.blob();
+};
+
+export const downloadDOCX = async (resumeText) => {
+  const res = await fetch(`${API_BASE}/download-resume`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ resume: resumeText, format: "docx" }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "DOCX download failed");
+  }
+  return res.blob();
+};
+
+// --- Tailor Resume ---
+export const tailorResume = async (resume, jd, role = "Generic", company = "Unknown") => {
+  const res = await fetch(`${API_BASE}/tailor-resume`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ resume, jd, role, company }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Tailor failed");
+  }
+  return await res.json();
+};
+
+// --- Fetch Jobs ---
+export const fetchJobs = async (resume, preferredRoles = [], preferredCities = [], employmentTypes = []) => {
+  const res = await fetch(`${API_BASE}/jobs`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ resume, preferredRoles, preferredCities, employmentTypes }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Job fetching failed");
+  }
+  return res.json();
+};
+
+// --- Job Detail ---
+export const getJobDetail = async (jobId, resumeText) => {
+  const res = await fetch(`${API_BASE}/job/${jobId}`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ resume: resumeText }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Fetching job detail failed");
+  }
+  return res.json();
+};
+
+// --- AI Resume Generation ---
+export const generateResume = async (name, job_description) => {
+  const res = await fetch(`${API_BASE}/generate-resume`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ name, job_description }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Resume generation failed");
+  }
+  return res.blob();
+};
+
+// --- Match Resume to JD ---
+export const matchResumeToJD = async (resume, jd) => {
+  const res = await fetch(`${API_BASE}/match`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ resume, jd }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Resume–JD match failed");
+  }
+  return res.json();
+};
+
+// --- Interview & Feedback ---
+export const evaluateAnswer = async (answer, jd = "Generic") => {
+  const res = await fetch(`${API_BASE}/evaluate`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ answer, jd }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Evaluation failed");
+  }
+  return res.json();
+};
+
+export const fetchInterviewQuestions = async (jobTitle) => {
+  const res = await fetch(`${API_BASE}/generate-questions`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ job_title: jobTitle }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Question generation failed");
+  }
+  return res.json();
+};
+
+// --- Auto-Apply to Job ---
+export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
+  const res = await fetch(`${API_BASE}/auto-apply`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ resume, job_url, job_title, company }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Auto-apply failed");
+  }
+  return await res.json();
+};
+
+// --- Cover Letter Generation ---
+export const generateCoverLetter = async (data) => {
+  const res = await fetch(`${API_BASE}/generate-cover-letter`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to generate cover letter.");
+  }
   return res.json();
 };
