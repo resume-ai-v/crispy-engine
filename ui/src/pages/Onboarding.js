@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import AsyncSelect from "react-select/async";
 import onboardingImage from "../assets/onboarding-image.jpg";
-import { submitOnboarding, getOnboarding, API_BASE } from "../utils/api"; // Import API_BASE
+import { submitOnboarding, getOnboarding, suggestSkills, suggestRoles, suggestCities } from "../utils/api";
 import { useNavigate } from "react-router-dom";
 
-// Async loader for react-select (corrected)
+// --- Async loader for react-select ---
 const fetchOptions = (endpoint) => async (input) => {
   if (!input || input.length < 2) return [];
   let options = [];
@@ -17,21 +17,6 @@ const fetchOptions = (endpoint) => async (input) => {
     return [];
   }
 };
-
-// CORRECT VERSION (keep this one)
-const fetchOptions = (endpoint) => async (input) => {
-  if (!input || input.length < 2) return [];
-  let options = [];
-  try {
-    if (endpoint === "skills") options = await suggestSkills(input);
-    else if (endpoint === "roles") options = await suggestRoles(input);
-    else if (endpoint === "cities") options = await suggestCities(input);
-    return (options || []).map((val) => ({ value: val, label: val }));
-  } catch {
-    return [];
-  }
-};
-
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -46,7 +31,6 @@ export default function Onboarding() {
   const [preferredCities, setPreferredCities] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
-  // The rest of your component logic remains the same...
   // Prefill onboarding data if it exists
   useEffect(() => {
     async function load() {
