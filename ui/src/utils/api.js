@@ -35,6 +35,25 @@ export const login = async (email, password) => {
   return data;
 };
 
+// --- SUGGEST ENDPOINTS ---
+export const suggestSkills = async (query) => {
+  const res = await fetch(`${API_BASE}/suggest/skills?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error("Failed to fetch skills");
+  return (await res.json()).options || [];
+};
+
+export const suggestRoles = async (query) => {
+  const res = await fetch(`${API_BASE}/suggest/roles?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error("Failed to fetch roles");
+  return (await res.json()).options || [];
+};
+
+export const suggestCities = async (query) => {
+  const res = await fetch(`${API_BASE}/suggest/cities?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error("Failed to fetch cities");
+  return (await res.json()).options || [];
+};
+
 // Submit Onboarding Details (JWT required)
 export const submitOnboarding = async (data) => {
   const res = await fetch(`${API_BASE}/onboarding`, {
