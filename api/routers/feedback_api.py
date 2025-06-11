@@ -3,7 +3,7 @@ from ai_agents.feedback_agent.tool import evaluate_answer
 
 router = APIRouter()
 
-@router.post("/api/evaluate")
+@router.post("/evaluate")
 def evaluate_answer_route(data: dict = Body(...)):
     try:
         if not data.get('answer') or not data.get('jd'):

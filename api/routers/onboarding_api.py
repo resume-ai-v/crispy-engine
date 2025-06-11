@@ -60,17 +60,17 @@ def search_options(options, q):
     return [opt for opt in options if q_lower in opt.lower()][:10]
 
 # These endpoints should NOT require login/session:
-@router.get("/api/suggest/skills")
+@router.get("/suggest/skills")
 async def suggest_skills(q: str = Query(..., min_length=1)):
     matches = search_options(SKILLS, q)
     return {"options": matches}
 
-@router.get("/api/suggest/roles")
+@router.get("/suggest/roles")
 async def suggest_roles(q: str = Query(..., min_length=1)):
     matches = search_options(ROLES, q)
     return {"options": matches}
 
-@router.get("/api/suggest/cities")
+@router.get("/suggest/cities")
 async def suggest_cities(q: str = Query(..., min_length=1)):
     matches = search_options(CITIES, q)
     return {"options": matches}

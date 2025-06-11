@@ -64,7 +64,7 @@ def generate_match_explanation(ats, semantic):
     else:
         return "Weak match. Resume may not meet core requirements for this job."
 
-@router.post("/api/match")
+@router.post("/match")
 def match_resume_to_jd(data: MatchRequest):
     try:
         resume, jd = data.resume.strip(), data.jd.strip()

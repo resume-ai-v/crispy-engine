@@ -5,7 +5,7 @@ from utils.resume.extract_text import extract_text_from_file
 
 router = APIRouter()
 
-@router.post("/api/upload-resume")
+@router.post("/upload-resume")
 async def upload_resume(file: UploadFile = File(...)):
     try:
         # Save file to temp location

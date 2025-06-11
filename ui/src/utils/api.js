@@ -11,7 +11,7 @@ const withAuth = (headers = {}) => {
 
 // Signup (new user)
 export const signup = async (full_name, email, password) => {
-  const res = await fetch(`${API_BASE}/api/signup`, {
+  const res = await fetch(`${API_BASE}/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ full_name, email, password }),
@@ -24,7 +24,7 @@ export const signup = async (full_name, email, password) => {
 
 // Login (real, not dummy)
 export const login = async (email, password) => {
-  const res = await fetch(`${API_BASE}/api/login`, {
+  const res = await fetch(`${API_BASE}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -37,7 +37,7 @@ export const login = async (email, password) => {
 
 // Submit Onboarding Details (JWT required)
 export const submitOnboarding = async (data) => {
-  const res = await fetch(`${API_BASE}/api/onboarding`, {
+  const res = await fetch(`${API_BASE}/onboarding`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify(data),
@@ -49,7 +49,7 @@ export const submitOnboarding = async (data) => {
 
 // Fetch User Onboarding Details (JWT required)
 export const getOnboarding = async () => {
-  const res = await fetch(`${API_BASE}/api/onboarding`, {
+  const res = await fetch(`${API_BASE}/onboarding`, {
     method: "GET",
     headers: withAuth(),
   });
@@ -59,7 +59,7 @@ export const getOnboarding = async () => {
 
 // Update Preferences (JWT required, PATCH)
 export const updatePreferences = async (data) => {
-  const res = await fetch(`${API_BASE}/api/preferences`, {
+  const res = await fetch(`${API_BASE}/preferences`, {
     method: "PATCH",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify(data),
@@ -76,7 +76,7 @@ export const uploadResume = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${API_BASE}/api/upload-resume`, {
+  const res = await fetch(`${API_BASE}/upload-resume`, {
     method: "POST",
     headers: withAuth(),
     body: formData,
@@ -90,7 +90,7 @@ export const uploadResume = async (file) => {
  * Tailor Resume with GPT
  */
 export const tailorResume = async (resume, jd, role = "Generic", company = "Unknown") => {
-  const res = await fetch(`${API_BASE}/api/tailor-resume`, {
+  const res = await fetch(`${API_BASE}/tailor-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume, jd, role, company }),
@@ -106,7 +106,7 @@ export const tailorResume = async (resume, jd, role = "Generic", company = "Unkn
  * Download Resume (PDF or DOCX)
  */
 export const downloadPDF = async (resumeText) => {
-  const res = await fetch(`${API_BASE}/api/download-resume`, {
+  const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume: resumeText, format: "pdf" }),
@@ -119,7 +119,7 @@ export const downloadPDF = async (resumeText) => {
 };
 
 export const downloadDOCX = async (resumeText) => {
-  const res = await fetch(`${API_BASE}/api/download-resume`, {
+  const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume: resumeText, format: "docx" }),
@@ -135,7 +135,7 @@ export const downloadDOCX = async (resumeText) => {
  * Auto-Apply to Job
  */
 export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
-  const res = await fetch(`${API_BASE}/api/auto-apply`, {
+  const res = await fetch(`${API_BASE}/auto-apply`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume, job_url, job_title, company }),
@@ -151,7 +151,7 @@ export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
  * Generate AI-Based Resume (DOCX)
  */
 export const generateResume = async (name, job_description) => {
-  const res = await fetch(`${API_BASE}/api/generate-resume`, {
+  const res = await fetch(`${API_BASE}/generate-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ name, job_description }),
@@ -168,7 +168,7 @@ export const generateResume = async (name, job_description) => {
  * Match Resume to Job Description
  */
 export const matchResumeToJD = async (resume, jd) => {
-  const res = await fetch(`${API_BASE}/api/match`, {
+  const res = await fetch(`${API_BASE}/match`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume, jd }),
@@ -185,7 +185,7 @@ export const matchResumeToJD = async (resume, jd) => {
  * Evaluate Interview Answer for Feedback
  */
 export const evaluateAnswer = async (answer, jd = "Generic") => {
-  const res = await fetch(`${API_BASE}/api/evaluate`, {
+  const res = await fetch(`${API_BASE}/evaluate`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ answer, jd }),
@@ -202,7 +202,7 @@ export const evaluateAnswer = async (answer, jd = "Generic") => {
  * Fetch AI-Generated Interview Questions
  */
 export const fetchInterviewQuestions = async (jobTitle) => {
-  const res = await fetch(`${API_BASE}/api/generate-questions`, {
+  const res = await fetch(`${API_BASE}/generate-questions`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ job_title: jobTitle }),
@@ -219,7 +219,7 @@ export const fetchInterviewQuestions = async (jobTitle) => {
  * Fetch Job Listings Based on Resume/Preferences
  */
 export const fetchJobs = async (resume, preferredRoles = [], preferredCities = [], employmentTypes = []) => {
-  const res = await fetch(`${API_BASE}/api/jobs`, {
+  const res = await fetch(`${API_BASE}/jobs`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume, preferredRoles, preferredCities, employmentTypes }),
@@ -236,7 +236,7 @@ export const fetchJobs = async (resume, preferredRoles = [], preferredCities = [
  * Get Job Details (with GPT Explanation)
  */
 export const getJobDetail = async (jobId, resumeText) => {
-  const res = await fetch(`${API_BASE}/api/job/${jobId}`, {
+  const res = await fetch(`${API_BASE}/job/${jobId}`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ resume: resumeText }),
@@ -253,7 +253,7 @@ export const getJobDetail = async (jobId, resumeText) => {
  * Legacy “apply to job”
  */
 export const applyToJob = async (data) => {
-  const res = await fetch(`${API_BASE}/api/apply-to-job`, {
+  const res = await fetch(`${API_BASE}/apply-to-job`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify(data),
@@ -268,7 +268,7 @@ export const applyToJob = async (data) => {
  * Generate AI-Powered Cover Letter
  */
 export const generateCoverLetter = async (data) => {
-  const res = await fetch(`${API_BASE}/api/generate-cover-letter`, {
+  const res = await fetch(`${API_BASE}/generate-cover-letter`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify(data),
