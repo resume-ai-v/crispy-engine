@@ -18,18 +18,20 @@ const fetchOptions = (endpoint) => async (input) => {
   }
 };
 
-// Dynamic async options loader for skills, roles, and cities (FIXED)
+// CORRECT VERSION (keep this one)
 const fetchOptions = (endpoint) => async (input) => {
   if (!input || input.length < 2) return [];
+  let options = [];
   try {
-    // FIX: Use the API_BASE constant for a reliable URL
-    const res = await fetch(`${API_BASE}/api/suggest/${endpoint}?q=${encodeURIComponent(input)}`);
-    const data = await res.json();
-    return (data.options || []).map((val) => ({ value: val, label: val }));
+    if (endpoint === "skills") options = await suggestSkills(input);
+    else if (endpoint === "roles") options = await suggestRoles(input);
+    else if (endpoint === "cities") options = await suggestCities(input);
+    return (options || []).map((val) => ({ value: val, label: val }));
   } catch {
     return [];
   }
 };
+
 
 export default function Onboarding() {
   const navigate = useNavigate();
