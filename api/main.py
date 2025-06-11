@@ -5,12 +5,11 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import os
 
-# --- Load environment variables ---
+# Load env vars
 load_dotenv()
 
 app = FastAPI(title="Career AI Dev API")
 
-# --- CORS (no trailing slash in origins) ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -21,13 +20,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
-
-# --- Serve static (optional) ---
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# --- Correct imports with 'api.' prefix! ---
+# Always import with api. prefix from main.py (since main.py is in api/)
 from api.routers.auth_api import router as auth_router
 from api.routers.resume_api import router as resume_router
 from api.routers.feedback_api import router as feedback_router
@@ -37,7 +33,6 @@ from api.routers.apply_api import router as apply_router
 from api.routers.onboarding_api import router as onboarding_router
 from api.routers.match_api import router as match_router
 
-# --- Register routers under a single /api prefix ---
 api_router = APIRouter(prefix="/api")
 api_router.include_router(auth_router)
 api_router.include_router(resume_router)
@@ -53,7 +48,7 @@ app.include_router(api_router)
 def root():
     return {"message": "Career AI backend is live!"}
 
-# --- Async DB init (always use api. prefix) ---
+# DB Setup
 from api.extensions.db import engine
 from api.models.user import Base
 
