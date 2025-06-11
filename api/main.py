@@ -8,11 +8,14 @@ import os
 load_dotenv()
 app = FastAPI(title="Career AI Dev API")
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://launchhire.vercel.app",
-        "http://localhost:3000",
+        "https://launchhire.vercel.app",   # Your Vercel main domain
+        "https://launchhire-vijays-projects-10840c84.vercel.app",  # Any preview domains
+        "http://localhost:3000",           # Local dev
     ],
     allow_credentials=True,
     allow_methods=["*"],
