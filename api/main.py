@@ -5,9 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import os
 
-# Load env vars
 load_dotenv()
-
 app = FastAPI(title="Career AI Dev API")
 
 app.add_middleware(
@@ -23,7 +21,7 @@ app.add_middleware(
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Always import with api. prefix from main.py (since main.py is in api/)
+# --- Correct "api.routers" imports ---
 from api.routers.auth_api import router as auth_router
 from api.routers.resume_api import router as resume_router
 from api.routers.feedback_api import router as feedback_router
@@ -48,7 +46,6 @@ app.include_router(api_router)
 def root():
     return {"message": "Career AI backend is live!"}
 
-# DB Setup
 from api.extensions.db import engine
 from api.models.user import Base
 

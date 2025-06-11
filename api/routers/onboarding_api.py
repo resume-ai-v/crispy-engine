@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from sqlalchemy.orm import Session
-from api.extensions.db import get_async_db as get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from api.extensions.db import get_async_db
 from api.routers.auth_api import get_current_user
+from api.models.user import User
 
 router = APIRouter()
 
@@ -20,24 +22,22 @@ class OnboardingData(BaseModel):
 @router.post("/onboarding")
 async def save_onboarding(
     data: OnboardingData,
-    db: Session = Depends(get_db),
-    user = Depends(get_current_user)
+    db: AsyncSession = Depends(get_async_db),
+    user: User = Depends(get_current_user),
 ):
-    try:
-        user.onboarding_data = data.dict()
-        db.commit()
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to save onboarding data: {str(e)}")
+    user.onboarding_data = data.dict()
+    db.add(user)
+    await db.commit()
+    return {"status": "success"}
 
 @router.get("/onboarding")
 async def get_onboarding(
-    db: Session = Depends(get_db),
-    user = Depends(get_current_user)
+    db: AsyncSession = Depends(get_async_db),
+    user: User = Depends(get_current_user)
 ):
     return user.onboarding_data or {}
 
-# --- Suggest endpoints (autocomplete for select fields) ---
+# --- Autocomplete Endpoints ---
 SKILLS = [
     "Python", "Java", "JavaScript", "React", "Node.js", "SQL", "C++", "C#", "AWS", "Django",
     "Flask", "FastAPI", "Machine Learning", "Deep Learning", "Data Analysis", "TensorFlow",
