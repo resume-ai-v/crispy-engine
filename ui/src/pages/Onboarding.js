@@ -4,6 +4,20 @@ import onboardingImage from "../assets/onboarding-image.jpg";
 import { submitOnboarding, getOnboarding, API_BASE } from "../utils/api"; // Import API_BASE
 import { useNavigate } from "react-router-dom";
 
+// Async loader for react-select (corrected)
+const fetchOptions = (endpoint) => async (input) => {
+  if (!input || input.length < 2) return [];
+  let options = [];
+  try {
+    if (endpoint === "skills") options = await suggestSkills(input);
+    else if (endpoint === "roles") options = await suggestRoles(input);
+    else if (endpoint === "cities") options = await suggestCities(input);
+    return (options || []).map((val) => ({ value: val, label: val }));
+  } catch {
+    return [];
+  }
+};
+
 // Dynamic async options loader for skills, roles, and cities (FIXED)
 const fetchOptions = (endpoint) => async (input) => {
   if (!input || input.length < 2) return [];

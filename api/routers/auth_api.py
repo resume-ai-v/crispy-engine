@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Header
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -24,8 +24,7 @@ async def signup(data: SignupData, db: AsyncSession = Depends(get_async_db)):
     existing_user = result.scalars().first()
     if existing_user:
         raise HTTPException(status_code=400, detail="User already exists")
-    # Combine first/last for full name fallback, or use as is
-    full_name = f"{data.first_name} {data.last_name}".strip() if data.first_name or data.last_name else ""
+    full_name = f"{data.first_name} {data.last_name}".strip()
     user = User(
         full_name=full_name,
         email=data.email,
@@ -33,7 +32,8 @@ async def signup(data: SignupData, db: AsyncSession = Depends(get_async_db)):
     )
     db.add(user)
     await db.commit()
-    return {"message": "Signup successful"}
+    # Return session token for MVP
+    return {"message": "Signup successful", "token": f"session-{user.email}"}
 
 @router.post("/login")
 async def login(data: LoginData, db: AsyncSession = Depends(get_async_db)):
@@ -41,17 +41,16 @@ async def login(data: LoginData, db: AsyncSession = Depends(get_async_db)):
     user = result.scalars().first()
     if not user or not Hasher.verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    # TODO: Add JWT/session auth for production
     return {"message": "Login successful", "token": f"session-{user.email}"}
 
-# Utility to get user from fake session-token (MVP only!)
+# Utility for current user (from MVP session-token in Authorization header)
 async def get_current_user(
     db: AsyncSession = Depends(get_async_db),
-    token: str = "",
+    Authorization: str = Header(None),
 ):
-    if not token or not token.startswith("session-"):
+    if not Authorization or not Authorization.startswith("session-"):
         raise HTTPException(status_code=401, detail="Not authenticated")
-    email = token.replace("session-", "")
+    email = Authorization.replace("session-", "")
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()
     if not user:

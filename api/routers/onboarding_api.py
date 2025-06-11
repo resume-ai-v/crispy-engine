@@ -37,7 +37,7 @@ async def get_onboarding(
 ):
     return user.onboarding_data or {}
 
-# --- Autocomplete Endpoints ---
+# --- Autocomplete Endpoints: Public ---
 SKILLS = [
     "Python", "Java", "JavaScript", "React", "Node.js", "SQL", "C++", "C#", "AWS", "Django",
     "Flask", "FastAPI", "Machine Learning", "Deep Learning", "Data Analysis", "TensorFlow",
@@ -59,7 +59,6 @@ def search_options(options, q):
     q_lower = q.lower()
     return [opt for opt in options if q_lower in opt.lower()][:10]
 
-# These endpoints should NOT require login/session:
 @router.get("/suggest/skills")
 async def suggest_skills(q: str = Query(..., min_length=1)):
     matches = search_options(SKILLS, q)
@@ -74,4 +73,3 @@ async def suggest_roles(q: str = Query(..., min_length=1)):
 async def suggest_cities(q: str = Query(..., min_length=1)):
     matches = search_options(CITIES, q)
     return {"options": matches}
-
