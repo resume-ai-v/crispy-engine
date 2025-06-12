@@ -9,14 +9,17 @@ const withAuth = (headers = {}) => {
   return token ? { ...headers, Authorization: token } : headers;
 };
 
-// --- Auth ---
 
-// Signup (first_name/last_name for current backend)
 export const signup = async (first_name, last_name, email, password) => {
   const res = await fetch(`${API_BASE}/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ first_name, last_name, email, password }),
+    body: JSON.stringify({
+      first_name,    // snake_case, as expected by backend
+      last_name,
+      email,
+      password,
+    }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || "Signup failed");
