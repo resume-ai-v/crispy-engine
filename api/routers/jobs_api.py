@@ -160,15 +160,14 @@ def clean_job_data(job: dict, filters: dict) -> dict:
     }
 
 
-# -------- Main Endpoint (FIXED) -------- #
-@router.post("/jobs")  # Removed /api prefix here as it's handled by main.py
+@router.post("/jobs")
 def get_jobs(data: dict = Body(...), request: Request = None):
-    # This endpoint signature and logic remains mostly the same...
     try:
-        resume = data.get("resume", "").strip()
-        preferred_roles = data.get("preferredRoles", [])
-        preferred_cities = data.get("preferredCities", [])
-        employment_types = data.get("employmentTypes", [])
+        # Accept both camelCase and snake_case keys for compatibility
+        resume = data.get("resume") or data.get("resume_text") or ""
+        preferred_roles = data.get("preferredRoles") or data.get("preferred_roles") or []
+        preferred_cities = data.get("preferredCities") or data.get("preferred_cities") or []
+        employment_types = data.get("employmentTypes") or data.get("employment_types") or []
 
         role = preferred_roles[0] if preferred_roles else ""
         city = preferred_cities[0] if preferred_cities else None
@@ -183,9 +182,7 @@ def get_jobs(data: dict = Body(...), request: Request = None):
             })
             for job in jobs_raw
         ]
-
         jobs_cleaned.sort(key=lambda j: j["numeric_score"], reverse=True)
-        # FIX: Return data in the format the frontend expects
         return {"jobs": jobs_cleaned}
     except Exception as e:
         print(f"Job search failed: {e}")

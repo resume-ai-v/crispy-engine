@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from "react";
 import AsyncSelect from "react-select/async";
 import onboardingImage from "../assets/onboarding-image.jpg";
-import { submitOnboarding, getOnboarding, suggestSkills, suggestRoles, suggestCities } from "../utils/api";
+import {
+  submitOnboarding,
+  getOnboarding,
+  suggestSkills,
+  suggestRoles,
+  suggestCities,
+} from "../utils/api";
 import { useNavigate } from "react-router-dom";
 
 // --- Async loader for react-select ---
 const fetchOptions = (endpoint) => async (input) => {
   if (!input || input.length < 2) return [];
-  let options = [];
   try {
+    let options = [];
     if (endpoint === "skills") options = await suggestSkills(input);
     else if (endpoint === "roles") options = await suggestRoles(input);
     else if (endpoint === "cities") options = await suggestCities(input);
@@ -30,6 +36,7 @@ export default function Onboarding() {
   const [employmentTypes, setEmploymentTypes] = useState([]);
   const [preferredCities, setPreferredCities] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [error, setError] = useState("");
 
   // Prefill onboarding data if it exists
   useEffect(() => {
@@ -40,25 +47,35 @@ export default function Onboarding() {
           setFirstStepSelections(data.firstStepSelections || []);
           setEducationStatus(data.educationStatus || "");
           setFieldOfStudy(data.fieldOfStudy || "");
-          setSkills((data.skills || []).map(s => ({ value: s, label: s })));
-          setPreferredRoles((data.preferredRoles || []).map(r => ({ value: r, label: r })));
+          setSkills((data.skills || []).map((s) => ({ value: s, label: s })));
+          setPreferredRoles(
+            (data.preferredRoles || []).map((r) => ({ value: r, label: r }))
+          );
           setEmploymentTypes(data.employmentTypes || []);
-          setPreferredCities((data.preferredCities || []).map(c => ({ value: c, label: c })));
+          setPreferredCities(
+            (data.preferredCities || []).map((c) => ({ value: c, label: c }))
+          );
         }
-      } catch {/* ignore */}
+      } catch (e) {
+        // ignore, just load empty form
+      }
     }
     load();
   }, []);
 
   const handleCheckboxToggle = (value) => {
     setFirstStepSelections((prev) =>
-      prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]
+      prev.includes(value)
+        ? prev.filter((item) => item !== value)
+        : [...prev, value]
     );
   };
 
   const handleEmploymentTypeToggle = (value) => {
     setEmploymentTypes((prev) =>
-      prev.includes(value) ? prev.filter((type) => type !== value) : [...prev, value]
+      prev.includes(value)
+        ? prev.filter((type) => type !== value)
+        : [...prev, value]
     );
   };
 
@@ -75,7 +92,9 @@ export default function Onboarding() {
     }
   };
 
+  // --- MAIN PERMANENT FIX ---
   const handleSubmit = async () => {
+    setError("");
     const onboardingData = {
       firstStepSelections,
       educationStatus,
@@ -88,15 +107,10 @@ export default function Onboarding() {
     };
 
     try {
-      const result = await submitOnboarding(onboardingData);
-      if (result.status === "success") {
-        setShowModal(true);
-      } else {
-        alert("Something went wrong while saving your onboarding info.");
-      }
+      await submitOnboarding(onboardingData); // treat any 200 OK as success!
+      setShowModal(true);
     } catch (error) {
-      console.error("Onboarding error:", error);
-      alert("❌ Server error. Please try again.");
+      setError("❌ Server error. Please try again.");
     }
   };
 
@@ -112,7 +126,9 @@ export default function Onboarding() {
       {step === 1 && (
         <div className="flex flex-col md:flex-row items-center justify-between max-w-4xl w-full gap-10 mt-20">
           <div className="flex-1 text-left">
-            <h2 className="text-3xl font-bold mb-4">Let’s Land Your First Job Faster with AI</h2>
+            <h2 className="text-3xl font-bold mb-4">
+              Let’s Land Your First Job Faster with AI
+            </h2>
             <p className="text-gray-600 mb-6">
               Smart job matching. AI interviews. Instant resume tailoring.
             </p>
@@ -124,19 +140,30 @@ export default function Onboarding() {
             </button>
           </div>
           <div className="flex-1">
-            <img src={onboardingImage} alt="AI Assistant" className="rounded-lg" />
+            <img
+              src={onboardingImage}
+              alt="AI Assistant"
+              className="rounded-lg"
+            />
           </div>
         </div>
       )}
 
       {step === 2 && (
         <div className="mt-28 max-w-xl w-full">
-          <h2 className="text-xl font-bold mb-2">What’s Your First Step Toward Success?</h2>
+          <h2 className="text-xl font-bold mb-2">
+            What’s Your First Step Toward Success?
+          </h2>
           <p className="text-gray-600 mb-6">
-            Whether you're job hunting, practicing interviews, or polishing your resume we'll guide you every step.
+            Whether you're job hunting, practicing interviews, or polishing your
+            resume we'll guide you every step.
           </p>
           <div className="flex gap-3 justify-center mb-6">
-            {["Find my First Job", "Practice Interviews", "Build My Resume"].map((item) => (
+            {[
+              "Find my First Job",
+              "Practice Interviews",
+              "Build My Resume",
+            ].map((item) => (
               <button
                 key={item}
                 className={`border px-4 py-2 rounded-full text-sm transition-all duration-150 ${
@@ -151,10 +178,16 @@ export default function Onboarding() {
             ))}
           </div>
           <div className="flex justify-center gap-4">
-            <button onClick={() => setStep(1)} className="bg-gray-200 px-6 py-2 rounded">
+            <button
+              onClick={() => setStep(1)}
+              className="bg-gray-200 px-6 py-2 rounded"
+            >
               Back
             </button>
-            <button onClick={() => setStep(3)} className="bg-purple-600 text-white px-6 py-2 rounded">
+            <button
+              onClick={() => setStep(3)}
+              className="bg-purple-600 text-white px-6 py-2 rounded"
+            >
               Next
             </button>
           </div>
@@ -165,7 +198,8 @@ export default function Onboarding() {
         <div className="mt-28 max-w-xl w-full text-left">
           <h2 className="text-xl font-bold mb-2">Help Us Know You Better.</h2>
           <p className="text-gray-600 mb-6">
-            A few quick details so we can show you the most relevant jobs and best practice interviews.
+            A few quick details so we can show you the most relevant jobs and
+            best practice interviews.
           </p>
           <div className="space-y-4">
             <select
@@ -210,10 +244,16 @@ export default function Onboarding() {
             </div>
           </div>
           <div className="flex justify-center gap-4 mt-6">
-            <button onClick={() => setStep(2)} className="bg-gray-200 px-6 py-2 rounded">
+            <button
+              onClick={() => setStep(2)}
+              className="bg-gray-200 px-6 py-2 rounded"
+            >
               Back
             </button>
-            <button onClick={() => setStep(4)} className="bg-purple-600 text-white px-6 py-2 rounded">
+            <button
+              onClick={() => setStep(4)}
+              className="bg-purple-600 text-white px-6 py-2 rounded"
+            >
               Next
             </button>
           </div>
@@ -222,8 +262,13 @@ export default function Onboarding() {
 
       {step === 4 && (
         <div className="mt-28 max-w-xl w-full text-left">
-          <h2 className="text-xl font-bold mb-2">Dream Job? Let’s Find It Together.</h2>
-          <p className="text-gray-600 mb-6">Choose the roles and cities you love, we’ll find the best matches for you.</p>
+          <h2 className="text-xl font-bold mb-2">
+            Dream Job? Let’s Find It Together.
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Choose the roles and cities you love, we’ll find the best matches
+            for you.
+          </p>
 
           <div className="space-y-4">
             <AsyncSelect
@@ -263,13 +308,24 @@ export default function Onboarding() {
             />
           </div>
 
-          <div className="flex justify-center gap-4 mt-6">
-            <button onClick={() => setStep(3)} className="bg-gray-200 px-6 py-2 rounded">
-              Back
-            </button>
-            <button onClick={handleSubmit} className="bg-purple-600 text-white px-6 py-2 rounded">
-              Submit
-            </button>
+          <div className="flex flex-col items-center gap-4 mt-6">
+            {error && (
+              <p className="text-red-500 text-sm mb-2">{error}</p>
+            )}
+            <div className="flex gap-4">
+              <button
+                onClick={() => setStep(3)}
+                className="bg-gray-200 px-6 py-2 rounded"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="bg-purple-600 text-white px-6 py-2 rounded"
+              >
+                Submit
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -278,9 +334,12 @@ export default function Onboarding() {
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md w-full">
             <div className="text-5xl text-purple-600 mb-4">✓</div>
-            <h2 className="text-xl font-bold mb-2">You’re Ready. Let’s Get You Hired.</h2>
+            <h2 className="text-xl font-bold mb-2">
+              You’re Ready. Let’s Get You Hired.
+            </h2>
             <p className="text-gray-600 mb-6">
-              Your dashboard is ready with job matches, interview practices, and resume boosters. Take your first step today!
+              Your dashboard is ready with job matches, interview practices, and
+              resume boosters. Take your first step today!
             </p>
             <button
               onClick={() => navigate("/recommended-jobs")}

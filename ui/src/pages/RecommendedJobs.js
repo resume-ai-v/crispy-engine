@@ -13,28 +13,31 @@ export default function RecommendedJobs() {
       setLoading(true);
       setError("");
       try {
-        // More reliable: Fetch user's latest onboarding data from the API
+        // Fetch user's latest onboarding data
         const onboardingData = await getOnboarding();
-        const resumeText = onboardingData.resume_text || "";
-        const preferredRoles = onboardingData.preferred_roles || [];
-        const preferredCities = onboardingData.preferred_cities || [];
-        const employmentTypes = onboardingData.employment_types || [];
 
-        // Check if there is enough info to get recommendations
-        if (!resumeText) {
+        // Map fields to camelCase as required by backend
+        const resume = onboardingData.resume_text || onboardingData.resume || "";
+        const preferredRoles = onboardingData.preferred_roles || onboardingData.preferredRoles || [];
+        const preferredCities = onboardingData.preferred_cities || onboardingData.preferredCities || [];
+        const employmentTypes = onboardingData.employment_types || onboardingData.employmentTypes || [];
+
+        // Debug log
+        console.log("Requesting jobs with:", { resume, preferredRoles, preferredCities, employmentTypes });
+
+        if (!resume) {
           setError("Please complete your profile and upload a resume to get job recommendations.");
           setLoading(false);
           return;
         }
 
+        // Fetch jobs
         const data = await fetchJobs(
-          resumeText,
+          resume,
           preferredRoles,
           preferredCities,
           employmentTypes
         );
-
-        // API returns an object { jobs: [...] }, so access the .jobs property
         setJobs(data.jobs || []);
       } catch (err) {
         console.error("Error fetching recommended jobs:", err);
@@ -44,7 +47,7 @@ export default function RecommendedJobs() {
       }
     }
     loadJobs();
-  }, []); // Run only once on component mount
+  }, []);
 
   return (
     <div className="p-4 md:p-8 w-full min-h-screen bg-gray-50">
@@ -80,7 +83,7 @@ export default function RecommendedJobs() {
           {jobs.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-2">
               {jobs.map((job) => (
-                <JobCard key={job.job_id || `${job.title}-${job.company}`} job={job} />
+                <JobCard key={job.id || `${job.title}-${job.company}`} job={job} />
               ))}
             </div>
           ) : (
