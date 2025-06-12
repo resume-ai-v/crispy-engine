@@ -1,4 +1,3 @@
-# api/routers/onboarding_api.py
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -38,7 +37,7 @@ async def get_onboarding(
 ):
     return user.onboarding_data or {}
 
-# --- Public autocomplete endpoints ---
+# --- Static Suggestions ---
 SKILLS = [
     "Python", "Java", "JavaScript", "React", "Node.js", "SQL", "C++", "C#", "AWS", "Django",
     "Flask", "FastAPI", "Machine Learning", "Deep Learning", "Data Analysis", "TensorFlow",
@@ -55,22 +54,25 @@ CITIES = [
 ]
 
 def search_options(options, q):
-    if not q:
-        return []
-    q_lower = q.lower()
-    return [opt for opt in options if q_lower in opt.lower()][:10]
+    # Remove leading/trailing spaces and force case-insensitive match
+    q_lower = (q or "").strip().lower()
+    results = [opt for opt in options if q_lower in opt.lower()]
+    print(f"[DEBUG] Searched '{q}' - Found: {results}")
+    return results[:10]
 
 @router.get("/suggest/skills")
 async def suggest_skills(q: str = Query(..., min_length=1)):
-    matches = search_options(SKILLS, q)
-    return {"options": matches}
+    return {"options": search_options(SKILLS, q)}
 
 @router.get("/suggest/roles")
 async def suggest_roles(q: str = Query(..., min_length=1)):
-    matches = search_options(ROLES, q)
-    return {"options": matches}
+    return {"options": search_options(ROLES, q)}
 
 @router.get("/suggest/cities")
 async def suggest_cities(q: str = Query(..., min_length=1)):
-    matches = search_options(CITIES, q)
-    return {"options": matches}
+    return {"options": search_options(CITIES, q)}
+
+# --- Optional debug route ---
+@router.get("/debug/skills")
+async def debug_skills():
+    return {"skills": SKILLS}
