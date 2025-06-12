@@ -1,3 +1,4 @@
+# api/routers/onboarding_api.py
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -37,7 +38,7 @@ async def get_onboarding(
 ):
     return user.onboarding_data or {}
 
-# --- Autocomplete Endpoints: Public ---
+# --- Public autocomplete endpoints ---
 SKILLS = [
     "Python", "Java", "JavaScript", "React", "Node.js", "SQL", "C++", "C#", "AWS", "Django",
     "Flask", "FastAPI", "Machine Learning", "Deep Learning", "Data Analysis", "TensorFlow",

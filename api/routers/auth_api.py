@@ -1,3 +1,4 @@
+# api/routers/auth_api.py
 from fastapi import APIRouter, HTTPException, Depends, status, Header
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +33,6 @@ async def signup(data: SignupData, db: AsyncSession = Depends(get_async_db)):
     )
     db.add(user)
     await db.commit()
-    # Return session token for MVP
     return {"message": "Signup successful", "token": f"session-{user.email}"}
 
 @router.post("/login")
@@ -43,7 +43,7 @@ async def login(data: LoginData, db: AsyncSession = Depends(get_async_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     return {"message": "Login successful", "token": f"session-{user.email}"}
 
-# Utility for current user (from MVP session-token in Authorization header)
+# Utility to get current user from "session-token" (for use in other routers)
 async def get_current_user(
     db: AsyncSession = Depends(get_async_db),
     Authorization: str = Header(None),
