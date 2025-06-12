@@ -1,5 +1,10 @@
 import { FaSuitcase, FaRobot, FaFileAlt, FaCog, FaQuestionCircle } from "react-icons/fa";
+import { FiFileText } from "react-icons/fi";  // <-- Add this import!
 import { NavLink } from "react-router-dom";
+
+// Optional: To avoid error with linkClasses, define it or remove custom classes for cover letter link.
+const linkClasses = (isActive) =>
+  `flex items-center gap-3 ${isActive ? "text-purple-600 font-semibold" : "text-gray-700"}`;
 
 export default function Sidebar({ active }) {
   return (
@@ -33,6 +38,7 @@ export default function Sidebar({ active }) {
             <FaRobot /> AI Interview Practice
           </NavLink>
 
+          {/* Cover Letter Link (Feather Icon) */}
           <NavLink to="/cover-letter-generator" className={({ isActive }) => linkClasses(isActive)}>
             <FiFileText className="mr-3" /> Cover Letter
           </NavLink>
@@ -48,7 +54,7 @@ export default function Sidebar({ active }) {
             <FaFileAlt /> AI Resume
           </NavLink>
         </nav>
-      </div>x
+      </div>
 
       {/* Bottom Settings + Help */}
       <div className="space-y-4 text-gray-700 text-sm pt-4 border-t mt-6">
