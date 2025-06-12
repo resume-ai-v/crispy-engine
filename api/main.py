@@ -5,33 +5,36 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import os
 
-# --- Load environment variables ---
+# --- Load environment variables (from .env) ---
 load_dotenv()
 
 app = FastAPI(title="Career AI Dev API")
 
-# --- CORS Middleware (for production and dev) ---
+# --- CORS Middleware ---
+# List ALL deployed frontend URLs here, EXACTLY as seen in browser.
+PROD_ORIGINS = [
+    "https://launchhire.vercel.app",  # Your main Vercel prod site
+    "https://launchhire-vijays-projects-10840c84.vercel.app",  # (optional, example preview domain)
+    "http://localhost:3000",  # For local frontend development
+    # If you have Vercel preview URLs, add them as they appear.
+    # "https://YOUR-PREVIEW-URL.vercel.app",  # Example
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://launchhire.vercel.app",
-        "https://launchhire-vijays-projects-10840c84.vercel.app",
-        "http://localhost:3000",
-        # Add more preview or custom domains here as needed!
-    ],
+    allow_origins=PROD_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Session Middleware ---
+# --- Session Middleware (for login/session handling) ---
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
 
-# --- Static Files (serves /static if folder exists) ---
+# --- Optional: Static files for user uploads, etc ---
 if os.path.isdir("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# --- Import Routers (each should use router = APIRouter() with NO prefix in their own file) ---
+# --- Import Routers (each must use router = APIRouter() and NO prefix in their own file) ---
 from api.routers.auth_api import router as auth_router
 from api.routers.resume_api import router as resume_router
 from api.routers.feedback_api import router as feedback_router
@@ -41,7 +44,7 @@ from api.routers.apply_api import router as apply_router
 from api.routers.onboarding_api import router as onboarding_router
 from api.routers.match_api import router as match_router
 
-# --- Master API Router (prefixes all API endpoints under /api) ---
+# --- Master API Router (single /api prefix for ALL endpoints) ---
 api_router = APIRouter(prefix="/api")
 api_router.include_router(auth_router)
 api_router.include_router(resume_router)
@@ -58,7 +61,7 @@ app.include_router(api_router)
 def root():
     return {"message": "Career AI backend is live!"}
 
-# --- Database: Auto-create tables on startup ---
+# --- Database: Auto-create tables on startup (if using SQLAlchemy/async) ---
 from api.extensions.db import engine
 from api.models.user import Base
 
@@ -69,3 +72,4 @@ async def init_models():
 @app.on_event("startup")
 async def startup_event():
     await init_models()
+
