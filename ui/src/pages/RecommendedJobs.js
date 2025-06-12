@@ -13,25 +13,41 @@ export default function RecommendedJobs() {
       setLoading(true);
       setError("");
       try {
-        // Fetch user's latest onboarding data
+        // Get onboarding data (always expect resume_text key to exist now)
         const onboardingData = await getOnboarding();
 
-        // Map fields to camelCase as required by backend
-        const resume = onboardingData.resume_text || onboardingData.resume || "";
-        const preferredRoles = onboardingData.preferred_roles || onboardingData.preferredRoles || [];
-        const preferredCities = onboardingData.preferred_cities || onboardingData.preferredCities || [];
-        const employmentTypes = onboardingData.employment_types || onboardingData.employmentTypes || [];
+        // --- Robust resume/field mapping (accept any case/camel/snake) ---
+        const resume =
+          onboardingData.resume_text ||
+          onboardingData.resumeText ||
+          onboardingData.resume ||
+          localStorage.getItem("resumeText") || "";
 
-        // Debug log
-        console.log("Requesting jobs with:", { resume, preferredRoles, preferredCities, employmentTypes });
+        const preferredRoles =
+          onboardingData.preferred_roles ||
+          onboardingData.preferredRoles ||
+          [];
 
-        if (!resume) {
+        const preferredCities =
+          onboardingData.preferred_cities ||
+          onboardingData.preferredCities ||
+          [];
+
+        const employmentTypes =
+          onboardingData.employment_types ||
+          onboardingData.employmentTypes ||
+          [];
+
+        // Debug log for devs:
+        // console.log("Requesting jobs with:", { resume, preferredRoles, preferredCities, employmentTypes });
+
+        if (!resume.trim()) {
           setError("Please complete your profile and upload a resume to get job recommendations.");
           setLoading(false);
           return;
         }
 
-        // Fetch jobs
+        // Fetch jobs using the best available data
         const data = await fetchJobs(
           resume,
           preferredRoles,
@@ -40,7 +56,6 @@ export default function RecommendedJobs() {
         );
         setJobs(data.jobs || []);
       } catch (err) {
-        console.error("Error fetching recommended jobs:", err);
         setError(err.message || "Could not fetch job recommendations.");
       } finally {
         setLoading(false);

@@ -1,8 +1,7 @@
-// ui/src/pages/CoverLetterGenerator.js
+// src/pages/CoverLetterGenerator.js
 
 import React, { useState, useEffect } from 'react';
-import { generateCoverLetter as generateCoverLetterAPI } from '../utils/api';
-import { getOnboarding } from '../utils/api'; // To pre-fill the resume
+import { generateCoverLetter as generateCoverLetterAPI, getOnboarding } from '../utils/api';
 
 const CoverLetterGenerator = () => {
     const [resume, setResume] = useState('');
@@ -15,16 +14,30 @@ const CoverLetterGenerator = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Pre-fill user's name and resume from their profile
+    // --- Load name & resume from onboarding/localStorage ---
     useEffect(() => {
-        const fetchUserData = async () => {
-            const data = await getOnboarding();
-            if (data) {
-                setUserName(data.full_name || '');
-                setResume(data.resume_text || '');
+        async function load() {
+            try {
+                // Try onboarding profile first (reliable for signed-in users)
+                const data = await getOnboarding();
+                setUserName(
+                    data.full_name ||
+                    data.user_name ||
+                    data.first_name + " " + (data.last_name || "") ||
+                    ""
+                );
+                setResume(
+                    data.resume_text ||
+                    data.resume ||
+                    localStorage.getItem("resumeText") ||
+                    ""
+                );
+            } catch {
+                // fallback to localStorage if onboarding fails
+                setResume(localStorage.getItem("resumeText") || "");
             }
-        };
-        fetchUserData();
+        }
+        load();
     }, []);
 
     const handleSubmit = async (e) => {
@@ -36,7 +49,6 @@ const CoverLetterGenerator = () => {
         setError('');
         setIsLoading(true);
         setGeneratedLetter('');
-
         try {
             const response = await generateCoverLetterAPI({
                 resume_text: resume,
@@ -46,7 +58,7 @@ const CoverLetterGenerator = () => {
                 company_name: companyName,
                 industry: industry,
             });
-            setGeneratedLetter(response.cover_letter);
+            setGeneratedLetter(response.cover_letter || "No cover letter returned.");
         } catch (err) {
             setError(err.message || 'Failed to generate cover letter. Please try again.');
         } finally {
@@ -55,7 +67,7 @@ const CoverLetterGenerator = () => {
     };
 
     return (
-        <div className="p-4 md:p-8 w-full">
+        <div className="p-4 md:p-8 w-full min-h-screen bg-gray-50">
             <h1 className="text-3xl font-bold mb-2">AI-Powered Cover Letter Generator</h1>
             <p className="text-gray-600 mb-8">Create a compelling cover letter tailored to any job in seconds.</p>
 

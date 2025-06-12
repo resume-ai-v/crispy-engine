@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from api.extensions.db import get_async_db
 from api.routers.auth_api import get_current_user
 from api.models.user import User
@@ -15,6 +14,7 @@ class OnboardingData(BaseModel):
     fieldOfStudy: Optional[str] = ""
     skills: Optional[List[str]] = Field(default_factory=list)
     resumeName: Optional[str] = ""
+    resumeText: Optional[str] = ""   # NEW: Save plain text of resume
     preferredRoles: Optional[List[str]] = Field(default_factory=list)
     employmentTypes: Optional[List[str]] = Field(default_factory=list)
     preferredCities: Optional[List[str]] = Field(default_factory=list)
@@ -26,6 +26,9 @@ async def save_onboarding(
     user: User = Depends(get_current_user),
 ):
     user.onboarding_data = data.dict()
+    # Save resume text if present
+    if data.resumeText:
+        user.resume_text = data.resumeText
     db.add(user)
     await db.commit()
     return {"status": "success"}
@@ -35,7 +38,9 @@ async def get_onboarding(
     db: AsyncSession = Depends(get_async_db),
     user: User = Depends(get_current_user)
 ):
-    return user.onboarding_data or {}
+    onboarding = user.onboarding_data or {}
+    onboarding["resume_text"] = user.resume_text or ""
+    return onboarding
 
 # --- Static Suggestions ---
 SKILLS = [
@@ -54,10 +59,8 @@ CITIES = [
 ]
 
 def search_options(options, q):
-    # Remove leading/trailing spaces and force case-insensitive match
     q_lower = (q or "").strip().lower()
     results = [opt for opt in options if q_lower in opt.lower()]
-    print(f"[DEBUG] Searched '{q}' - Found: {results}")
     return results[:10]
 
 @router.get("/suggest/skills")
@@ -71,8 +74,3 @@ async def suggest_roles(q: str = Query(..., min_length=1)):
 @router.get("/suggest/cities")
 async def suggest_cities(q: str = Query(..., min_length=1)):
     return {"options": search_options(CITIES, q)}
-
-# --- Optional debug route ---
-@router.get("/debug/skills")
-async def debug_skills():
-    return {"skills": SKILLS}

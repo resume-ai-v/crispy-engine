@@ -1,3 +1,5 @@
+// src/pages/AIInterviewPractice.js
+
 import React, { useState } from "react";
 import UserDropdown from "../components/UserDropdown";
 import AvatarPlayer from "../components/AvatarPlayer";
@@ -64,9 +66,10 @@ export default function AIInterviewPractice() {
   const [loadingRoundId, setLoadingRoundId] = useState(null); // Track which round is loading
   const [feedbackLoading, setFeedbackLoading] = useState(false); // For feedback button
 
+  // Try resume from localStorage (as uploaded or pasted in AI Resume)
   const resumeText = localStorage.getItem("resumeText") || "";
 
-  // --- Start AI Avatar Interview (call backend) ---
+  // --- Start AI Avatar Interview (calls backend endpoint) ---
   const startAvatarInterview = async (round) => {
     setLoadingRoundId(round.id);
     setFeedback("");
@@ -75,7 +78,7 @@ export default function AIInterviewPractice() {
     setAvatarVideoUrl("");
     setAvatarAudioUrl("");
     try {
-      const res = await fetch(`${API_BASE}/api/start-interview`, {
+      const res = await fetch(`${API_BASE}/start-interview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -84,15 +87,15 @@ export default function AIInterviewPractice() {
           round: round.avatarRound,
         }),
       });
-      if (!res.ok) throw new Error("Failed to start");
+      if (!res.ok) throw new Error("Failed to start interview session");
       const data = await res.json();
       setSelectedRound(round);
-      setQuestion(data.question);
+      setQuestion(data.question || "");
       setAnswer(data.answer || "");
-      setAvatarVideoUrl(data.video_url);
-      setAvatarAudioUrl(data.audio_url);
+      setAvatarVideoUrl(data.video_url || "");
+      setAvatarAudioUrl(data.audio_url || "");
     } catch (err) {
-      alert("❌ Failed to start AI Avatar Interview.");
+      alert("❌ Failed to start AI Avatar Interview. Please try again.");
       setSelectedRound(null);
     } finally {
       setLoadingRoundId(null);

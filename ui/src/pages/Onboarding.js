@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import AsyncSelect from "react-select/async";
 import onboardingImage from "../assets/onboarding-image.jpg";
+import { uploadResume } from "../utils/api";
 import {
   submitOnboarding,
   getOnboarding,
@@ -79,28 +80,31 @@ export default function Onboarding() {
     );
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (file && file.type === "application/pdf") {
       setResume(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        localStorage.setItem("resumeFile", reader.result);
-        localStorage.setItem("resumeName", file.name);
-      };
-      reader.readAsDataURL(file);
+      // Upload to backend to extract text & save in DB/session
+      try {
+        const res = await uploadResume(file); // Calls /upload-resume and stores in backend
+        localStorage.setItem("resumeText", res.resume_text || "");
+      } catch {
+        alert("Resume upload failed, please try again.");
+      }
     }
   };
 
-  // --- MAIN PERMANENT FIX ---
   const handleSubmit = async () => {
     setError("");
+    // Grab the plain text from localStorage (after upload)
+    const resumeText = localStorage.getItem("resumeText") || "";
     const onboardingData = {
       firstStepSelections,
       educationStatus,
       fieldOfStudy,
       skills: skills.map((s) => s.value),
       resumeName: resume?.name || "No resume",
+      resume_text: resumeText,         // ADD THIS LINE
       preferredRoles: preferredRoles.map((r) => r.value),
       employmentTypes,
       preferredCities: preferredCities.map((c) => c.value),

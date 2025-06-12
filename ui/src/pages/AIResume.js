@@ -1,13 +1,11 @@
-// src/pages/AIResume.js
-
 import React, { useState, useEffect } from "react";
 import ResumeCard from "../components/ResumeCard";
-import { uploadResume, tailorResume, downloadPDF, downloadDOCX } from "../utils/api";
+import { uploadResume, tailorResume, downloadPDF, downloadDOCX, getOnboarding } from "../utils/api";
 import { FaDownload } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 export default function AIResume() {
-  const [resumeText, setResumeText] = useState(() => localStorage.getItem("resumeText") || "");
+  const [resumeText, setResumeText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [jobDescription, setJobDescription] = useState("");
   const [tailoredResume, setTailoredResume] = useState("");
@@ -18,12 +16,36 @@ export default function AIResume() {
 
   const navigate = useNavigate();
 
-  // Keep resume in localStorage for editing/viewing continuity
+  // On first load: always try to get the best available resume (onboarding or localStorage)
   useEffect(() => {
-    localStorage.setItem("resumeText", resumeText);
+    async function loadResume() {
+      let resume =
+        localStorage.getItem("resumeText") ||
+        "";
+      // Try to fetch from onboarding if empty or not present
+      if (!resume) {
+        try {
+          const onboarding = await getOnboarding();
+          resume =
+            onboarding.resume_text ||
+            onboarding.resumeText ||
+            onboarding.resume ||
+            "";
+        } catch (e) {
+          // Ignore, fallback to blank
+        }
+      }
+      setResumeText(resume);
+    }
+    loadResume();
+  }, []);
+
+  // Always keep in sync with localStorage for inline editing
+  useEffect(() => {
+    localStorage.setItem("resumeText", resumeText || "");
   }, [resumeText]);
 
-  // Handle resume file upload (PDF/DOCX/TXT)
+  // Handle file upload
   const handleResumeUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -31,7 +53,6 @@ export default function AIResume() {
     try {
       const res = await uploadResume(file);
       setResumeText(res.resume_text || "");
-      localStorage.setItem("resumeText", res.resume_text || "");
       setTailoredResume("");
       setOriginalMatch(null);
       setTailoredMatch(null);
@@ -43,7 +64,7 @@ export default function AIResume() {
     setUploading(false);
   };
 
-  // Tailor resume with AI
+  // Tailor with AI
   const handleTailor = async () => {
     if (!resumeText.trim() || !jobDescription.trim()) {
       alert("Please provide both your resume and a job description.");
