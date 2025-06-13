@@ -1,10 +1,8 @@
-// src/pages/ApplyPage.js
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { tailorResume, autoApplyJob, downloadPDF, downloadDOCX } from "../utils/api";
+import { tailorResume, autoApplyJob, downloadPDF, downloadDOCX, getJobDetail } from "../utils/api";
 import { FaDownload } from "react-icons/fa";
-import "./ApplyPage.css"; // Optional: your styling
+import "./ApplyPage.css"; // Optional
 
 export default function ApplyPage() {
   const { id } = useParams();
@@ -17,66 +15,46 @@ export default function ApplyPage() {
   const [matchInfo, setMatchInfo] = useState({ original: 0, tailored: 0 });
   const [applying, setApplying] = useState(false);
 
-  // We assume resume text is stored in localStorage under "resumeText"
   const resume = localStorage.getItem("resumeText") || "";
 
-  // 1) Fetch the job details (including initial match score) on mount
   useEffect(() => {
-    async function fetchJobDetail() {
+    async function fetchJobDetailData() {
+      setLoading(true);
       try {
-        const res = await fetch(
-          `${process.env.REACT_APP_API_BASE || ""}/api/job/${id}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ resume }), // send the resume so backend can compute original match
-          }
-        );
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || "Failed to fetch job detail");
-        }
-        const data = await res.json();
-        setJob(data.job);
-        // We expect data.job.match_score to be a number (0–100)
+        const data = await getJobDetail(id);
+        setJob(data);
         setMatchInfo((prev) => ({
           ...prev,
-          original: data.job.match_score || 0,
+          original: data.match_score || 0,
         }));
       } catch (err) {
+        setJob(null);
         console.error("Error fetching job:", err);
       } finally {
         setLoading(false);
       }
     }
-    fetchJobDetail();
-  }, [id, resume]);
+    fetchJobDetailData();
+  }, [id]);
 
-  if (loading) {
-    return <div className="apppage-container">Loading job details…</div>;
-  }
-  if (!job) {
-    return <div className="apppage-container">Job not found.</div>;
-  }
+  if (loading) return <div className="apppage-container">Loading job details…</div>;
+  if (!job) return <div className="apppage-container">Job not found.</div>;
 
-  // 2) Handle “Tailor Resume with AI”
   const handleTailor = async () => {
     setTailoring(true);
     try {
-      const res = await tailorResume(resume, job.jd_text, job.title, job.company);
+      const res = await tailorResume(resume, job.jd_text || job.description, job.title, job.company);
       setTailoredResume(res.tailored_resume || "");
       setMatchInfo({
         original: res.original_match || 0,
         tailored: res.tailored_match || 0,
       });
     } catch (err) {
-      console.error("❌ Tailoring failed:", err);
-      alert("❌ Something went wrong while tailoring the résumé. Check your API key / token limits / prompt.");
+      alert("❌ Something went wrong while tailoring the résumé.");
     }
     setTailoring(false);
   };
 
-  // 3) Handle Download (PDF or DOCX)
   const handleDownload = async (format) => {
     try {
       const textToDownload = tailoredResume || resume;
@@ -88,7 +66,6 @@ export default function ApplyPage() {
       } else {
         throw new Error("Unsupported format");
       }
-      // Trigger download
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -96,27 +73,22 @@ export default function ApplyPage() {
       a.click();
       a.remove();
     } catch (err) {
-      console.error("❌ Download failed:", err);
       alert("❌ Download failed. Please try again.");
     }
   };
 
-  // 4) Handle Auto-Apply
   const handleAutoApply = async () => {
     setApplying(true);
     try {
       const payload = {
         resume: tailoredResume || resume,
-        job_url: job.url,
+        job_url: job.link || job.url,
         job_title: job.title,
         company: job.company,
       };
       const res = await autoApplyJob(payload);
-      console.log("Auto-apply result:", res);
-      // Open the actual job URL in a new tab
-      window.open(job.url, "_blank");
+      window.open(job.link || job.url, "_blank");
     } catch (err) {
-      console.error("❌ Auto-apply failed:", err);
       alert("❌ Auto-apply failed. Please try again.");
     }
     setApplying(false);
@@ -127,14 +99,10 @@ export default function ApplyPage() {
       <button className="back-button" onClick={() => navigate(-1)}>
         ← Back to Jobs
       </button>
-
       <h1 className="job-title">{job.title}</h1>
-      <div className="job-subtitle">
-        {job.company} • {job.location}
-      </div>
+      <div className="job-subtitle">{job.company} • {job.location}</div>
       <div className="job-type">{job.type}</div>
 
-      {/* Match Scores */}
       <div className="match-scores-container">
         <div className="score-box">
           <span className="score-label">Original Match:</span>
@@ -146,7 +114,6 @@ export default function ApplyPage() {
         </div>
       </div>
 
-      {/* Tailor vs Use Current */}
       {!tailoredResume && (
         <div className="action-buttons">
           <button
@@ -165,12 +132,9 @@ export default function ApplyPage() {
         </div>
       )}
 
-      {/* Editor + Downloads + Apply */}
       {tailoredResume && (
         <div className="editor-and-downloads">
-          <label htmlFor="resume-editor" className="editor-label">
-            Your Résumé (editable):
-          </label>
+          <label htmlFor="resume-editor" className="editor-label">Your Résumé (editable):</label>
           <textarea
             id="resume-editor"
             className="resume-editor"
@@ -180,20 +144,13 @@ export default function ApplyPage() {
           />
 
           <div className="download-buttons">
-            <button
-              onClick={() => handleDownload("pdf")}
-              className="btn-outline"
-            >
+            <button onClick={() => handleDownload("pdf")} className="btn-outline">
               <FaDownload /> Download PDF
             </button>
-            <button
-              onClick={() => handleDownload("docx")}
-              className="btn-outline"
-            >
+            <button onClick={() => handleDownload("docx")} className="btn-outline">
               <FaDownload /> Download DOCX
             </button>
           </div>
-
           <button
             onClick={handleAutoApply}
             disabled={applying}
@@ -204,10 +161,9 @@ export default function ApplyPage() {
         </div>
       )}
 
-      {/* Job Description */}
       <div className="job-description-section">
         <h2 className="section-heading">Job Description</h2>
-        <pre className="job-description-text">{job.jd_text}</pre>
+        <pre className="job-description-text">{job.jd_text || job.description}</pre>
       </div>
     </div>
   );

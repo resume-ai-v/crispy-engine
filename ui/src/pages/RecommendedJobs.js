@@ -13,10 +13,8 @@ export default function RecommendedJobs() {
       setLoading(true);
       setError("");
       try {
-        // Get onboarding data (always expect resume_text key to exist now)
         const onboardingData = await getOnboarding();
 
-        // --- Robust resume/field mapping (accept any case/camel/snake) ---
         const resume =
           onboardingData.resume_text ||
           onboardingData.resumeText ||
@@ -38,16 +36,12 @@ export default function RecommendedJobs() {
           onboardingData.employmentTypes ||
           [];
 
-        // Debug log for devs:
-        // console.log("Requesting jobs with:", { resume, preferredRoles, preferredCities, employmentTypes });
-
         if (!resume.trim()) {
           setError("Please complete your profile and upload a resume to get job recommendations.");
           setLoading(false);
           return;
         }
 
-        // Fetch jobs using the best available data
         const data = await fetchJobs(
           resume,
           preferredRoles,
