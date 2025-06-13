@@ -24,14 +24,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Session Middleware (for login/session handling) ---
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "super-secret-key"))
 
-# --- Static files (if needed for user uploads, resumes, etc) ---
 if os.path.isdir("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# --- Import and mount all API routers ---
 from api.routers.auth_api import router as auth_router
 from api.routers.resume_api import router as resume_router
 from api.routers.feedback_api import router as feedback_router
@@ -52,12 +49,10 @@ api_router.include_router(onboarding_router)
 api_router.include_router(match_router)
 app.include_router(api_router)
 
-# --- Health Check (always available) ---
 @app.get("/")
 def root():
     return {"message": "Career AI backend is live!"}
 
-# --- Database: Auto-create tables on startup (if using SQLAlchemy/async) ---
 from api.extensions.db import engine
 from api.models.user import Base
 
@@ -69,7 +64,6 @@ async def init_models():
 async def startup_event():
     await init_models()
 
-# --- Extra Debug Route for CORS (optional, for debugging only) ---
 @app.get("/api/debug/origins")
 def debug_origins():
     return {"allowed_origins": PROD_ORIGINS}

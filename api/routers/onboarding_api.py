@@ -26,7 +26,6 @@ async def save_onboarding(
     user: User = Depends(get_current_user),
 ):
     user.onboarding_data = data.dict()
-    # Save resume text if present
     if data.resumeText:
         user.resume_text = data.resumeText
     db.add(user)

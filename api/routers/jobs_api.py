@@ -1,6 +1,6 @@
 import os
 import requests
-from fastapi import APIRouter, HTTPException, Body, Request, Query
+from fastapi import APIRouter, HTTPException, Body, Request
 from typing import Optional, List
 from functools import lru_cache
 import json
@@ -21,7 +21,6 @@ def _load_fallback_jobs():
 
 def get_fallback_jobs():
     jobs = _load_fallback_jobs()
-    # Format for frontend (id, title, company, etc.)
     return [
         {
             "id": str(i),
@@ -40,11 +39,9 @@ def get_fallback_jobs():
         for i, job in enumerate(jobs)
     ]
 
-# --- Main Endpoint: Real jobs with fallback ---
 @router.post("/jobs")
 def get_jobs(data: dict = Body(...), request: Request = None):
     try:
-        # Accept both camelCase and snake_case keys
         resume = data.get("resume") or data.get("resume_text") or ""
         preferred_roles = data.get("preferredRoles") or data.get("preferred_roles") or []
         preferred_cities = data.get("preferredCities") or data.get("preferred_cities") or []
@@ -84,7 +81,6 @@ def get_jobs(data: dict = Body(...), request: Request = None):
                 raise Exception(f"JSearch returned {resp.status_code}: {resp.text}")
             jobs_raw = resp.json().get("data", [])
 
-            # Format jobs for frontend
             for job in jobs_raw:
                 jobs_cleaned.append({
                     "id": job.get("job_id") or job.get("jobkey") or "",
@@ -104,10 +100,8 @@ def get_jobs(data: dict = Body(...), request: Request = None):
             print("❌ JSearch API error, using fallback. Details:", e)
             jobs_cleaned = get_fallback_jobs()
 
-        # Always return in { jobs: [...] } for frontend
         return {"jobs": jobs_cleaned}
 
     except Exception as e:
         print("❌ Critical /jobs error:", e)
         raise HTTPException(status_code=500, detail="Could not fetch jobs.")
-
