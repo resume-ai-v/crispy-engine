@@ -9,4 +9,5 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     onboarding_data = Column(JSON, default={})
     resume_text = Column(String, nullable=True)  # <-- Make sure this is present!
-    tailored_resume = Column(Text, nullable=True)
+    #tailored_resume = Column(Text, nullable=True)
+    tailored_resume = Column(String, nullable=True)
