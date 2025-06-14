@@ -18,8 +18,7 @@ import openai
 router = APIRouter()
 logging.basicConfig(level=logging.INFO)
 
-# --- Utility functions for scoring ---
-
+# --- Utility: Simple ATS Score
 def compute_ats_score(resume: str, jd: str) -> int:
     resume_words = set(re.findall(r'\w+', resume.lower()))
     jd_words = set(re.findall(r'\w+', jd.lower()))
@@ -31,6 +30,7 @@ def compute_ats_score(resume: str, jd: str) -> int:
     ats_score = int((match_count / len(jd_keywords)) * 100)
     return min(ats_score, 100)
 
+# --- Utility: Semantic Score (OpenAI v1.x syntax)
 def compute_semantic_score(resume: str, jd: str) -> int:
     try:
         api_key = os.getenv("OPENAI_API_KEY")
@@ -58,7 +58,6 @@ def compute_semantic_score(resume: str, jd: str) -> int:
         return compute_ats_score(resume, jd)
 
 # --- File upload endpoint ---
-
 @router.post("/upload-resume")
 async def upload_resume(
     file: UploadFile = File(...),
@@ -85,17 +84,17 @@ async def upload_resume(
         raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
 
 # --- Tailor resume endpoint ---
-
 @router.post("/tailor-resume")
 async def tailor_resume(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_async_db),
     user: User = Depends(get_current_user),
 ):
-    resume_text = payload.get("resume") or user.resume_text
+    resume_text = payload.get("resume") or getattr(user, "resume_text", None)
     jd_text = payload.get("jd")
     role = payload.get("role", "Generic")
     company = payload.get("company", "Unknown")
+    logging.info(f"Tailor resume requested for: {user.email if user else 'unknown'}")
     if not resume_text or not jd_text:
         raise HTTPException(status_code=400, detail="Missing resume or job description.")
 
@@ -136,7 +135,7 @@ async def tailor_resume(
             logging.error("OpenAI returned empty or too short tailored resume.")
             raise HTTPException(status_code=500, detail="OpenAI did not return a valid tailored resume.")
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+        logging.error(f"Unexpected error in OpenAI tailoring: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
     ats_score_tailored = compute_ats_score(tailored_resume, jd_text)
@@ -157,7 +156,6 @@ async def tailor_resume(
     }
 
 # --- PDF and DOCX Download ---
-
 def generate_pdf(text: str) -> bytes:
     pdf = FPDF()
     pdf.add_page()
@@ -194,7 +192,7 @@ async def download_resume(
     payload: dict = Body(...),
     user: User = Depends(get_current_user),
 ):
-    text = payload.get("resume") or user.resume_text
+    text = payload.get("resume") or getattr(user, "resume_text", None)
     fmt = payload.get("format", "pdf").lower()
     filename = "AI_Resume." + fmt
 
