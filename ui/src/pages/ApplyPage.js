@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { tailorResume, autoApplyJob, downloadPDF, downloadDOCX, getJobDetail } from "../utils/api";
+import { tailorResume, autoApplyJob, downloadPDF, downloadDOCX, getJobDetail, matchResumeToJD } from "../utils/api";
 import { FaDownload } from "react-icons/fa";
 import "./ApplyPage.css"; // Optional
 
@@ -17,15 +17,17 @@ export default function ApplyPage() {
 
   const resume = localStorage.getItem("resumeText") || "";
 
+  // Fetch job details and original match score (for current resume)
   useEffect(() => {
     async function fetchJobDetailData() {
       setLoading(true);
       try {
-        const data = await getJobDetail(id);
-        setJob(data);
+        // Send resume to backend for real match_score
+        const data = await getJobDetail(id, resume);
+        setJob(data.job || data); // Support {job: {...}} or direct {...}
         setMatchInfo((prev) => ({
           ...prev,
-          original: data.match_score || 0,
+          original: (data.job ? data.job.match_score : data.match_score) || 0,
         }));
       } catch (err) {
         setJob(null);
@@ -35,7 +37,36 @@ export default function ApplyPage() {
       }
     }
     fetchJobDetailData();
+    setTailoredResume(""); // Reset tailored state if switching jobs
+    setMatchInfo((prev) => ({ ...prev, tailored: 0 }));
+    // eslint-disable-next-line
   }, [id]);
+
+  // Live update tailored match when tailored resume changes
+  const updateTailoredMatch = useCallback(
+    async (resumeText) => {
+      if (!resumeText || !job) {
+        setMatchInfo((prev) => ({ ...prev, tailored: 0 }));
+        return;
+      }
+      try {
+        const matchRes = await matchResumeToJD(resumeText, job.jd_text || job.description);
+        const score = matchRes.ats_score !== undefined && matchRes.semantic_score !== undefined
+          ? Math.round((matchRes.ats_score + matchRes.semantic_score) / 2)
+          : 0;
+        setMatchInfo((prev) => ({ ...prev, tailored: score }));
+      } catch (err) {
+        setMatchInfo((prev) => ({ ...prev, tailored: 0 }));
+      }
+    },
+    [job]
+  );
+
+  // Run update when tailoredResume changes
+  useEffect(() => {
+    if (tailoredResume) updateTailoredMatch(tailoredResume);
+    // eslint-disable-next-line
+  }, [tailoredResume, updateTailoredMatch]);
 
   if (loading) return <div className="apppage-container">Loading job details…</div>;
   if (!job) return <div className="apppage-container">Job not found.</div>;
@@ -45,14 +76,21 @@ export default function ApplyPage() {
     try {
       const res = await tailorResume(resume, job.jd_text || job.description, job.title, job.company);
       setTailoredResume(res.tailored_resume || "");
-      setMatchInfo({
-        original: res.original_match || 0,
-        tailored: res.tailored_match || 0,
-      });
+      // Match % will update via useEffect above when tailoredResume changes
     } catch (err) {
       alert("❌ Something went wrong while tailoring the résumé.");
     }
     setTailoring(false);
+  };
+
+  const handleUseCurrent = () => {
+    setTailoredResume(resume);
+    // Match % will update via useEffect above
+  };
+
+  const handleEditTailored = async (e) => {
+    setTailoredResume(e.target.value);
+    // Match % will update via useEffect above
   };
 
   const handleDownload = async (format) => {
@@ -86,7 +124,7 @@ export default function ApplyPage() {
         job_title: job.title,
         company: job.company,
       };
-      const res = await autoApplyJob(payload);
+      await autoApplyJob(payload);
       window.open(job.link || job.url, "_blank");
     } catch (err) {
       alert("❌ Auto-apply failed. Please try again.");
@@ -124,7 +162,7 @@ export default function ApplyPage() {
             {tailoring ? "Tailoring…" : "Tailor Résumé with AI"}
           </button>
           <button
-            onClick={() => setTailoredResume(resume)}
+            onClick={handleUseCurrent}
             className="btn-secondary"
           >
             Use My Current Résumé
@@ -140,7 +178,7 @@ export default function ApplyPage() {
             className="resume-editor"
             rows={15}
             value={tailoredResume}
-            onChange={(e) => setTailoredResume(e.target.value)}
+            onChange={handleEditTailored}
           />
 
           <div className="download-buttons">

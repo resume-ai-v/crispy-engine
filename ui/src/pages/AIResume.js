@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
 import ResumeCard from "../components/ResumeCard";
-import { uploadResume, tailorResume, downloadPDF, downloadDOCX, getOnboarding } from "../utils/api";
+import {
+  uploadResume,
+  tailorResume,
+  downloadPDF,
+  downloadDOCX,
+  getOnboarding,
+} from "../utils/api";
 import { FaDownload } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -12,17 +18,15 @@ export default function AIResume() {
   const [originalMatch, setOriginalMatch] = useState(null);
   const [tailoredMatch, setTailoredMatch] = useState(null);
   const [atsScore, setATSScore] = useState(null);
+  const [semanticScore, setSemanticScore] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  // On first load: always try to get the best available resume (onboarding or localStorage)
+  // Load resume on mount
   useEffect(() => {
     async function loadResume() {
-      let resume =
-        localStorage.getItem("resumeText") ||
-        "";
-      // Try to fetch from onboarding if empty or not present
+      let resume = localStorage.getItem("resumeText") || "";
       if (!resume) {
         try {
           const onboarding = await getOnboarding();
@@ -32,7 +36,7 @@ export default function AIResume() {
             onboarding.resume ||
             "";
         } catch (e) {
-          // Ignore, fallback to blank
+          // ignore
         }
       }
       setResumeText(resume);
@@ -40,12 +44,12 @@ export default function AIResume() {
     loadResume();
   }, []);
 
-  // Always keep in sync with localStorage for inline editing
+  // Keep resume in localStorage for cross-page
   useEffect(() => {
     localStorage.setItem("resumeText", resumeText || "");
   }, [resumeText]);
 
-  // Handle file upload
+  // Upload resume file
   const handleResumeUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -57,6 +61,7 @@ export default function AIResume() {
       setOriginalMatch(null);
       setTailoredMatch(null);
       setATSScore(null);
+      setSemanticScore(null);
       alert("✅ Resume uploaded and parsed successfully!");
     } catch (err) {
       alert("❌ Failed to upload/parse resume.");
@@ -64,7 +69,7 @@ export default function AIResume() {
     setUploading(false);
   };
 
-  // Tailor with AI
+  // Tailor resume with AI
   const handleTailor = async () => {
     if (!resumeText.trim() || !jobDescription.trim()) {
       alert("Please provide both your resume and a job description.");
@@ -77,6 +82,7 @@ export default function AIResume() {
       setOriginalMatch(res.original_match);
       setTailoredMatch(res.tailored_match);
       setATSScore(res.ats_score ?? null);
+      setSemanticScore(res.semantic_score ?? null);
       localStorage.setItem("tailoredResumeText", res.tailored_resume || "");
     } catch (err) {
       alert("❌ Failed to tailor resume with AI. Please try again.");
@@ -84,7 +90,7 @@ export default function AIResume() {
     setLoading(false);
   };
 
-  // Download PDF/DOCX
+  // Download PDF or DOCX
   const handleDownload = async (format) => {
     const textToDownload = tailoredResume || resumeText;
     if (!textToDownload) {
@@ -94,7 +100,8 @@ export default function AIResume() {
     try {
       let blob;
       if (format === "pdf") blob = await downloadPDF(textToDownload);
-      else blob = await downloadDOCX(textToDownload);
+      else if (format === "docx") blob = await downloadDOCX(textToDownload);
+      else throw new Error("Unsupported format");
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -135,7 +142,6 @@ export default function AIResume() {
                 </button>
               )}
             </div>
-            {/* Only show textarea if no resume uploaded */}
             {!resumeText && (
               <textarea
                 className="w-full p-3 border border-gray-200 rounded-lg h-32 focus:outline-none focus:ring focus:border-purple-400"
@@ -178,10 +184,14 @@ export default function AIResume() {
                   ATS Score: <span className="text-black">{atsScore}%</span>
                 </span>
               )}
+              {semanticScore !== null && (
+                <span className="font-semibold text-yellow-700">
+                  Semantic Score: <span className="text-black">{semanticScore}%</span>
+                </span>
+              )}
             </div>
           )}
         </section>
-
         {/* RIGHT: Resume Preview/Editor */}
         <section className="flex-1 max-w-2xl flex flex-col items-center bg-white rounded-2xl shadow p-10">
           <div className="flex justify-between w-full mb-3">

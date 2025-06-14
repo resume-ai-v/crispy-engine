@@ -1,11 +1,12 @@
 import os
 import requests
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Request
 from typing import Optional
 
 router = APIRouter()
 
 REMOTIVE_API = "https://remotive.com/api/remote-jobs"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def fetch_remotive_jobs(keyword: str = "Software Engineer", limit: int = 12):
     params = {"search": keyword}
@@ -79,6 +80,40 @@ def fetch_jsearch_jobs(keyword: str, city: Optional[str] = None, limit: int = 12
         print("❌ JSearch API error:", e)
     return jobs_cleaned
 
+def compute_ats_score(resume: str, jd: str) -> int:
+    """Basic ATS match: % of JD keywords found in resume."""
+    import re
+    resume_words = set(re.findall(r'\w+', resume.lower()))
+    jd_words = set(re.findall(r'\w+', jd.lower()))
+    stopwords = {"the", "and", "is", "in", "to", "of", "a", "for", "on", "with"}
+    jd_keywords = [w for w in jd_words if w not in stopwords and len(w) > 2]
+    if not jd_keywords:
+        return 0
+    match_count = sum(1 for word in jd_keywords if word in resume_words)
+    ats_score = int((match_count / len(jd_keywords)) * 100)
+    return min(ats_score, 100)
+
+def compute_semantic_score(resume: str, jd: str) -> int:
+    try:
+        import openai
+        openai.api_key = OPENAI_API_KEY
+        prompt = (
+            f"Resume:\n{resume}\n\nJob Description:\n{jd}\n\n"
+            "Score from 0 to 100 how well this resume fits the job description, "
+            "considering skills, responsibilities, and experience. Only output the number."
+        )
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=8,
+            temperature=0.1,
+        )
+        score = int("".join(filter(str.isdigit, response["choices"][0]["message"]["content"])))
+        return min(score, 100)
+    except Exception as e:
+        print(f"Semantic score error (LLM fallback): {e}")
+        return compute_ats_score(resume, jd)
+
 @router.post("/jobs")
 def get_jobs(data: dict = Body(...)):
     preferred_roles = data.get("preferredRoles") or data.get("preferred_roles") or []
@@ -88,60 +123,59 @@ def get_jobs(data: dict = Body(...)):
     keyword = role or "Software Engineer"
     limit = 12
 
-    # Prefer JSearch, fallback to Remotive if empty
     jobs = fetch_jsearch_jobs(keyword, city, limit)
     if not jobs:
         jobs = fetch_remotive_jobs(keyword, limit)
     if not jobs:
         raise HTTPException(status_code=502, detail="Could not fetch jobs from any source.")
-
     return {"jobs": jobs}
 
 @router.post("/job/{job_id}")
-def get_job_detail(job_id: str):
-    JSEARCH_API_KEY = os.getenv("JSEARCH_API_KEY")
-    JSEARCH_API_HOST = os.getenv("JSEARCH_API_HOST")
+async def get_job_detail(job_id: str, data: dict = Body(None)):
+    """Returns job details and match score for provided resume."""
+    resume = (data or {}).get("resume", "")
 
     # --- JSearch detail ---
-    if job_id.startswith("jsearch_") and JSEARCH_API_KEY and JSEARCH_API_HOST:
+    if job_id.startswith("jsearch_"):
+        JSEARCH_API_KEY = os.getenv("JSEARCH_API_KEY")
+        JSEARCH_API_HOST = os.getenv("JSEARCH_API_HOST")
         actual_id = job_id.replace("jsearch_", "")
-        try:
-            url = f"https://{JSEARCH_API_HOST}/job-details"
-            headers = {
-                "X-RapidAPI-Key": JSEARCH_API_KEY,
-                "X-RapidAPI-Host": JSEARCH_API_HOST,
-            }
-            params = {"job_id": actual_id}
-            resp = requests.get(url, headers=headers, params=params, timeout=15)
-            print("Job detail API status:", resp.status_code)
-            if resp.status_code == 200:
-                data = resp.json()
-                # JSearch job-details returns a 'data' list
-                if data.get("status") == "OK" and data.get("data"):
-                    job = data["data"][0]
-                    return {
-                        "job": {
-                            "id": f"jsearch_{job.get('job_id', actual_id)}",
-                            "title": job.get("job_title", ""),
-                            "company": job.get("employer_name", ""),
-                            "location": job.get("job_city", "") or job.get("job_country", ""),
-                            "salary": job.get("job_min_salary") or "N/A",
-                            "description": job.get("job_description", ""),
-                            "jd_text": job.get("job_description", ""),
-                            "link": job.get("job_apply_link", ""),
-                            "posted": job.get("job_posted_at_datetime_utc", ""),
-                            "type": job.get("job_employment_type") or "Unknown",
-                            "logo": job.get("employer_logo") or "https://cdn-icons-png.flaticon.com/512/174/174872.png",
-                            "source": "JSearch",
-                            "match_score": 0  # Set real value if you calculate
+        if JSEARCH_API_KEY and JSEARCH_API_HOST:
+            try:
+                url = f"https://{JSEARCH_API_HOST}/job-details"
+                headers = {
+                    "X-RapidAPI-Key": JSEARCH_API_KEY,
+                    "X-RapidAPI-Host": JSEARCH_API_HOST,
+                }
+                params = {"job_id": actual_id}
+                resp = requests.get(url, headers=headers, params=params, timeout=15)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("status") == "OK" and data.get("data"):
+                        job = data["data"][0]
+                        # Calculate match score
+                        ats_score = compute_ats_score(resume, job.get("job_description", "")) if resume else 0
+                        semantic_score = compute_semantic_score(resume, job.get("job_description", "")) if resume else 0
+                        match_score = int((ats_score + semantic_score) / 2) if resume else 0
+                        return {
+                            "job": {
+                                "id": f"jsearch_{job.get('job_id', actual_id)}",
+                                "title": job.get("job_title", ""),
+                                "company": job.get("employer_name", ""),
+                                "location": job.get("job_city", "") or job.get("job_country", ""),
+                                "salary": job.get("job_min_salary") or "N/A",
+                                "description": job.get("job_description", ""),
+                                "jd_text": job.get("job_description", ""),
+                                "link": job.get("job_apply_link", ""),
+                                "posted": job.get("job_posted_at_datetime_utc", ""),
+                                "type": job.get("job_employment_type") or "Unknown",
+                                "logo": job.get("employer_logo") or "https://cdn-icons-png.flaticon.com/512/174/174872.png",
+                                "source": "JSearch",
+                                "match_score": match_score
+                            }
                         }
-                    }
-                else:
-                    print("JSearch job-details: No job found for that ID.")
-            else:
-                print("Job details API failed:", resp.status_code, resp.text)
-        except Exception as e:
-            print("❌ JSearch job detail error:", e)
+            except Exception as e:
+                print("❌ JSearch job detail error:", e)
 
     # --- Remotive fallback ---
     if job_id.startswith("remotive_"):
@@ -152,6 +186,9 @@ def get_job_detail(job_id: str):
             jobs = resp.json().get("jobs", [])
             for job in jobs:
                 if str(job["id"]) == str(actual_id):
+                    ats_score = compute_ats_score(resume, job.get("description", "")) if resume else 0
+                    semantic_score = compute_semantic_score(resume, job.get("description", "")) if resume else 0
+                    match_score = int((ats_score + semantic_score) / 2) if resume else 0
                     return {
                         "job": {
                             "id": f"remotive_{job['id']}",
@@ -166,7 +203,7 @@ def get_job_detail(job_id: str):
                             "type": job.get("job_type", "Unknown"),
                             "logo": job.get("company_logo_url") or "https://cdn-icons-png.flaticon.com/512/174/174872.png",
                             "source": "Remotive",
-                            "match_score": 0
+                            "match_score": match_score
                         }
                     }
         except Exception as e:
