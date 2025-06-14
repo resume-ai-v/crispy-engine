@@ -1,14 +1,13 @@
 export const API_BASE = "https://crispy-engine-nx6e.onrender.com/api";
 
 // --- Helper: Get session-token (MVP, not JWT) ---
-const getToken = () => localStorage.getItem("token");
+export const getToken = () => localStorage.getItem("token");
 
 // --- Helper: Attach Authorization header if token present ---
-const withAuth = (headers = {}) => {
+export const withAuth = (headers = {}) => {
   const token = getToken();
   return token ? { ...headers, Authorization: token } : headers;
 };
-
 
 export const signup = async (first_name, last_name, email, password) => {
   const res = await fetch(`${API_BASE}/signup`, {
@@ -27,7 +26,6 @@ export const signup = async (first_name, last_name, email, password) => {
   return data;
 };
 
-// Login
 export const login = async (email, password) => {
   const res = await fetch(`${API_BASE}/login`, {
     method: "POST",
