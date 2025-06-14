@@ -12,13 +12,11 @@ from api.routers.auth_api import get_current_user
 from api.models.user import User
 from docx import Document
 from fpdf import FPDF
-
 import openai
 
 router = APIRouter()
 logging.basicConfig(level=logging.INFO)
 
-# --- Utility: Simple ATS Score
 def compute_ats_score(resume: str, jd: str) -> int:
     resume_words = set(re.findall(r'\w+', resume.lower()))
     jd_words = set(re.findall(r'\w+', jd.lower()))
@@ -30,7 +28,6 @@ def compute_ats_score(resume: str, jd: str) -> int:
     ats_score = int((match_count / len(jd_keywords)) * 100)
     return min(ats_score, 100)
 
-# --- Utility: Semantic Score (OpenAI v1.x syntax)
 def compute_semantic_score(resume: str, jd: str) -> int:
     try:
         api_key = os.getenv("OPENAI_API_KEY")
@@ -57,7 +54,6 @@ def compute_semantic_score(resume: str, jd: str) -> int:
         logging.error(f"Semantic score error (LLM fallback): {e}")
         return compute_ats_score(resume, jd)
 
-# --- File upload endpoint ---
 @router.post("/upload-resume")
 async def upload_resume(
     file: UploadFile = File(...),
@@ -78,25 +74,30 @@ async def upload_resume(
         user.onboarding_data = onboarding
         db.add(user)
         await db.commit()
+        logging.info(f"[Upload] Resume uploaded for {user.email}")
         return {"resume_text": text}
     except Exception as e:
         logging.error(f"Error in upload_resume: {e}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
 
-# --- Tailor resume endpoint ---
 @router.post("/tailor-resume")
 async def tailor_resume(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_async_db),
     user: User = Depends(get_current_user),
 ):
-    resume_text = payload.get("resume") or getattr(user, "resume_text", None)
-    jd_text = payload.get("jd")
+    # Read from payload, fallback to user.resume_text (which must exist)
+    resume_text = (payload.get("resume") or getattr(user, "resume_text", "") or "").strip()
+    jd_text = (payload.get("jd") or "").strip()
     role = payload.get("role", "Generic")
     company = payload.get("company", "Unknown")
-    logging.info(f"Tailor resume requested for: {user.email if user else 'unknown'}")
-    if not resume_text or not jd_text:
-        raise HTTPException(status_code=400, detail="Missing resume or job description.")
+
+    logging.info(f"[Tailor Resume] User: {getattr(user, 'email', 'unknown')} | Resume present: {bool(resume_text)} | JD present: {bool(jd_text)}")
+
+    if not resume_text:
+        raise HTTPException(status_code=400, detail="Missing resume text. Upload a resume first or provide it in the request.")
+    if not jd_text:
+        raise HTTPException(status_code=400, detail="Missing job description text. Please provide JD.")
 
     max_len = 6000
     if len(resume_text) > max_len or len(jd_text) > max_len:
@@ -142,6 +143,7 @@ async def tailor_resume(
     semantic_score_tailored = compute_semantic_score(tailored_resume, jd_text)
     tailored_match = round((ats_score_tailored + semantic_score_tailored) / 2)
 
+    # Persist tailored resume if needed (optional)
     if hasattr(user, "tailored_resume"):
         user.tailored_resume = tailored_resume
         db.add(user)
@@ -155,7 +157,6 @@ async def tailor_resume(
         "semantic_score": semantic_score_tailored,
     }
 
-# --- PDF and DOCX Download ---
 def generate_pdf(text: str) -> bytes:
     pdf = FPDF()
     pdf.add_page()
@@ -192,11 +193,11 @@ async def download_resume(
     payload: dict = Body(...),
     user: User = Depends(get_current_user),
 ):
-    text = payload.get("resume") or getattr(user, "resume_text", None)
+    text = (payload.get("resume") or getattr(user, "resume_text", "") or "").strip()
     fmt = payload.get("format", "pdf").lower()
     filename = "AI_Resume." + fmt
 
-    if not text or not text.strip():
+    if not text:
         raise HTTPException(status_code=400, detail="No resume text provided.")
 
     if fmt == "pdf":

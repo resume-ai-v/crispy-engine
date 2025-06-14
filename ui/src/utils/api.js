@@ -14,7 +14,7 @@ export const signup = async (first_name, last_name, email, password) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      first_name,    // snake_case, as expected by backend
+      first_name,
       last_name,
       email,
       password,
@@ -82,12 +82,17 @@ export const getOnboarding = async () => {
 
 // --- Resume Upload (auth required) ---
 export const uploadResume = async (file) => {
+  if (!file) throw new Error("No file selected for upload.");
   const formData = new FormData();
   formData.append("file", file);
 
+  if (process.env.NODE_ENV === "development") {
+    console.log("[uploadResume] uploading file:", file);
+  }
+
   const res = await fetch(`${API_BASE}/upload-resume`, {
     method: "POST",
-    headers: withAuth(), // Content-Type is set automatically for FormData
+    headers: withAuth(),
     body: formData,
   });
 
@@ -97,6 +102,7 @@ export const uploadResume = async (file) => {
 
 // --- Download Resume (PDF/DOCX) ---
 export const downloadPDF = async (resumeText) => {
+  if (!resumeText || !resumeText.trim()) throw new Error("No resume text provided for PDF download.");
   const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
@@ -110,6 +116,7 @@ export const downloadPDF = async (resumeText) => {
 };
 
 export const downloadDOCX = async (resumeText) => {
+  if (!resumeText || !resumeText.trim()) throw new Error("No resume text provided for DOCX download.");
   const res = await fetch(`${API_BASE}/download-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
@@ -124,10 +131,19 @@ export const downloadDOCX = async (resumeText) => {
 
 // --- Tailor Resume ---
 export const tailorResume = async (resume, jd, role = "Generic", company = "Unknown") => {
+  // Defensive checks
+  if (!resume || !resume.trim()) throw new Error("No resume provided for tailoring.");
+  if (!jd || !jd.trim()) throw new Error("No job description provided for tailoring.");
+
+  const payload = { resume, jd, role, company };
+  if (process.env.NODE_ENV === "development") {
+    console.log("[tailorResume] payload:", payload);
+  }
+
   const res = await fetch(`${API_BASE}/tailor-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ resume, jd, role, company }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -138,6 +154,7 @@ export const tailorResume = async (resume, jd, role = "Generic", company = "Unkn
 
 // --- Fetch Jobs ---
 export const fetchJobs = async (resume, preferredRoles = [], preferredCities = [], employmentTypes = []) => {
+  if (!resume || !resume.trim()) throw new Error("Resume is required for job search.");
   const res = await fetch(`${API_BASE}/jobs`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
@@ -153,6 +170,7 @@ export const fetchJobs = async (resume, preferredRoles = [], preferredCities = [
 
 // --- Job Detail ---
 export const getJobDetail = async (jobId, resumeText) => {
+  if (!resumeText || !resumeText.trim()) throw new Error("Resume text required for job detail.");
   const res = await fetch(`${API_BASE}/job/${jobId}`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
@@ -168,6 +186,7 @@ export const getJobDetail = async (jobId, resumeText) => {
 
 // --- AI Resume Generation ---
 export const generateResume = async (name, job_description) => {
+  if (!name || !job_description) throw new Error("Name and job description required.");
   const res = await fetch(`${API_BASE}/generate-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
@@ -183,6 +202,7 @@ export const generateResume = async (name, job_description) => {
 
 // --- Match Resume to JD ---
 export const matchResumeToJD = async (resume, jd) => {
+  if (!resume || !resume.trim() || !jd || !jd.trim()) throw new Error("Both resume and job description are required.");
   const res = await fetch(`${API_BASE}/match`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
@@ -198,6 +218,7 @@ export const matchResumeToJD = async (resume, jd) => {
 
 // --- Interview & Feedback ---
 export const evaluateAnswer = async (answer, jd = "Generic") => {
+  if (!answer || !answer.trim()) throw new Error("Answer is required for evaluation.");
   const res = await fetch(`${API_BASE}/evaluate`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
@@ -212,6 +233,7 @@ export const evaluateAnswer = async (answer, jd = "Generic") => {
 };
 
 export const fetchInterviewQuestions = async (jobTitle) => {
+  if (!jobTitle || !jobTitle.trim()) throw new Error("Job title required for interview questions.");
   const res = await fetch(`${API_BASE}/generate-questions`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
@@ -227,6 +249,7 @@ export const fetchInterviewQuestions = async (jobTitle) => {
 
 // --- Auto-Apply to Job ---
 export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
+  if (!resume || !resume.trim() || !job_url) throw new Error("Resume and job URL required for auto-apply.");
   const res = await fetch(`${API_BASE}/auto-apply`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
@@ -241,6 +264,7 @@ export const autoApplyJob = async ({ resume, job_url, job_title, company }) => {
 
 // --- Cover Letter Generation ---
 export const generateCoverLetter = async (data) => {
+  if (!data || !data.resume || !data.jd) throw new Error("Resume and job description are required.");
   const res = await fetch(`${API_BASE}/generate-cover-letter`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
