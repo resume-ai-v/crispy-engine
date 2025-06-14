@@ -1,9 +1,7 @@
-// src/pages/AIInterviewPractice.js
-
 import React, { useState } from "react";
 import UserDropdown from "../components/UserDropdown";
 import AvatarPlayer from "../components/AvatarPlayer";
-import { evaluateAnswer as evaluateAnswerAPI, API_BASE } from "../utils/api";
+import { evaluateAnswer as evaluateAnswerAPI, API_BASE, withAuth } from "../utils/api"; // <-- import withAuth
 
 // --- Define Interview Rounds ---
 const INTERVIEW_ROUNDS = [
@@ -63,8 +61,8 @@ export default function AIInterviewPractice() {
   const [feedback, setFeedback] = useState("");
   const [avatarVideoUrl, setAvatarVideoUrl] = useState("");
   const [avatarAudioUrl, setAvatarAudioUrl] = useState("");
-  const [loadingRoundId, setLoadingRoundId] = useState(null); // Track which round is loading
-  const [feedbackLoading, setFeedbackLoading] = useState(false); // For feedback button
+  const [loadingRoundId, setLoadingRoundId] = useState(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   // Try resume from localStorage (as uploaded or pasted in AI Resume)
   const resumeText = localStorage.getItem("resumeText") || "";
@@ -80,7 +78,7 @@ export default function AIInterviewPractice() {
     try {
       const res = await fetch(`${API_BASE}/start-interview`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withAuth({ "Content-Type": "application/json" }), // <-- Use withAuth here!
         body: JSON.stringify({
           resume: resumeText,
           jd: "Generic",
@@ -91,7 +89,7 @@ export default function AIInterviewPractice() {
       const data = await res.json();
       setSelectedRound(round);
       setQuestion(data.question || "");
-      setAnswer(data.answer || "");
+      setAnswer(""); // Always start with empty answer
       setAvatarVideoUrl(data.video_url || "");
       setAvatarAudioUrl(data.audio_url || "");
     } catch (err) {

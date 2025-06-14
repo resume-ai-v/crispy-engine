@@ -30,6 +30,9 @@ def compute_ats_score(resume: str, jd: str) -> int:
 def compute_semantic_score(resume: str, jd: str) -> int:
     try:
         openai.api_key = os.getenv("OPENAI_API_KEY")
+        if not openai.api_key:
+            print("❌ OpenAI API Key missing in environment!")
+            return compute_ats_score(resume, jd)
         prompt = (
             f"Resume:\n{resume}\n\nJob Description:\n{jd}\n\n"
             "Score from 0 to 100 how well this resume fits the job description, "
@@ -93,6 +96,14 @@ async def tailor_resume(
     if not resume_text or not jd_text:
         raise HTTPException(status_code=400, detail="Missing resume or job description.")
 
+    # Input length check for OpenAI
+    max_len = 6000
+    if len(resume_text) > max_len or len(jd_text) > max_len:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Resume or JD too long (>{max_len} chars). Please shorten and try again."
+        )
+
     # Score original resume
     ats_score_orig = compute_ats_score(resume_text, jd_text)
     semantic_score_orig = compute_semantic_score(resume_text, jd_text)
@@ -101,6 +112,8 @@ async def tailor_resume(
     # Tailor using OpenAI GPT
     try:
         openai.api_key = os.getenv("OPENAI_API_KEY")
+        if not openai.api_key:
+            raise HTTPException(status_code=500, detail="Missing OpenAI API Key. Contact support.")
         prompt = (
             "You are an expert resume editor. Given the following resume and job description, "
             f"tailor the resume so it maximizes the candidate's chance of getting this {role} job at {company}. "
@@ -118,15 +131,18 @@ async def tailor_resume(
             temperature=0.4,
         )
         tailored_resume = response["choices"][0]["message"]["content"].strip()
+    except openai.error.OpenAIError as oe:
+        print("OpenAI error:", oe)
+        raise HTTPException(status_code=500, detail=f"OpenAI error: {oe}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OpenAI error: {str(e)}")
+        print("Unexpected error:", e)
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
     # Score tailored resume
     ats_score_tailored = compute_ats_score(tailored_resume, jd_text)
     semantic_score_tailored = compute_semantic_score(tailored_resume, jd_text)
     tailored_match = round((ats_score_tailored + semantic_score_tailored) / 2)
 
-    # Optionally update user's tailored resume for later use
     if hasattr(user, "tailored_resume"):
         user.tailored_resume = tailored_resume
         db.add(user)
@@ -180,3 +196,5 @@ async def download_resume(
         return StreamingResponse(io.BytesIO(docx_bytes), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"Content-Disposition": f"attachment; filename={filename}"})
     else:
         raise HTTPException(status_code=400, detail="Invalid format. Choose pdf or docx.")
+
+# ---- End of file ----

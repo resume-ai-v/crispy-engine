@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.INFO)
 class InterviewInput(BaseModel):
     resume: str = ""
     jd: str = ""
-    round: str = "hr"  # options: 'coding', 'system-design', 'hr'
+    round: str = "hr"  # 'coding', 'system-design', 'hr'
 
 # --- Generate Custom GPT-powered Interview Question ---
 def generate_gpt_question(resume, jd, round_type):
@@ -58,12 +58,11 @@ def generate_gpt_question(resume, jd, round_type):
             temperature=0.6,
         )
         question = response.choices[0].message.content.strip().replace("\n", " ")
-        # Sanitize to avoid trailing "Answer:" etc.
+        # Avoid trailing "Answer:" etc.
         question = question.split("Answer:")[0].strip()
         return question
     except Exception as e:
         logging.error(f"GPT interview question error: {e}")
-        # Fallback to static map if GPT fails
         return {
             "coding": "Can you walk me through how you would solve a classic array or string problem in code?",
             "system-design": "How would you design a scalable URL shortening service like bit.ly?",
@@ -73,8 +72,7 @@ def generate_gpt_question(resume, jd, round_type):
 # --- ElevenLabs Audio Generation ---
 def generate_elevenlabs_audio(text: str) -> str:
     """
-    Generates TTS audio using ElevenLabs and returns the audio file URL.
-    (Returns a direct mp3 url, or raises HTTPException)
+    Generates TTS audio using ElevenLabs and returns the audio file as a data URL (base64-encoded MP3).
     """
     if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
         raise HTTPException(status_code=500, detail="Missing ElevenLabs credentials.")
@@ -96,15 +94,8 @@ def generate_elevenlabs_audio(text: str) -> str:
         if audio_resp.status_code != 200:
             logging.error(f"ElevenLabs audio error: {audio_resp.text}")
             raise Exception(audio_resp.text)
-        # Save MP3 to disk and serve it (for demo, just use base64 in-memory or S3 in prod)
-        audio_path = f"/tmp/tts_{int(time.time())}.mp3"
-        with open(audio_path, "wb") as f:
-            f.write(audio_resp.content)
-        # In production: upload this file to S3 and return the public URL.
-        # For MVP: You must serve the file from a FastAPI static endpoint, or return base64 to the frontend.
-        # Here, we'll return a base64-encoded string for demo:
-        with open(audio_path, "rb") as f:
-            audio_b64 = base64.b64encode(f.read()).decode("utf-8")
+        # Save as base64 data URL for direct use in <audio>
+        audio_b64 = base64.b64encode(audio_resp.content).decode("utf-8")
         return f"data:audio/mp3;base64,{audio_b64}"
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate ElevenLabs audio: {str(e)}")
@@ -195,9 +186,8 @@ def start_interview(
         question = generate_gpt_question(data.resume, data.jd, round_type)
         script_for_avatar = f"Let me ask you an interview question. {question}"
 
-        # Generate audio first (for instant playback)
+        # Generate audio (for instant playback)
         audio_url = generate_elevenlabs_audio(script_for_avatar)
-
         # Generate video (async for user experience: play audio, show "Video generating...", then show video)
         video_url = generate_did_video(script_for_avatar)
 
@@ -211,4 +201,3 @@ def start_interview(
     except Exception as e:
         logging.error(f"Unexpected error in start_interview: {e}")
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
-
