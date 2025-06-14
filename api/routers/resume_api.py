@@ -1,3 +1,7 @@
+import os
+import io
+import re
+import openai
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Body
 from fastapi.responses import StreamingResponse
 from utils.resume.extract_text import extract_text_from_file
@@ -5,19 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.extensions.db import get_async_db
 from api.routers.auth_api import get_current_user
 from api.models.user import User
-import openai
-import os
-import io
-import re
 from docx import Document
 from fpdf import FPDF
 
 router = APIRouter()
 
-# --- Utility functions for matching ---
+# --- Utility functions for scoring ---
 
 def compute_ats_score(resume: str, jd: str) -> int:
-    """Simple ATS keyword matching (percentage of JD keywords in resume)."""
     resume_words = set(re.findall(r'\w+', resume.lower()))
     jd_words = set(re.findall(r'\w+', jd.lower()))
     stopwords = {"the", "and", "is", "in", "to", "of", "a", "for", "on", "with"}
@@ -29,7 +28,6 @@ def compute_ats_score(resume: str, jd: str) -> int:
     return min(ats_score, 100)
 
 def compute_semantic_score(resume: str, jd: str) -> int:
-    """Semantic score using OpenAI or fallback to ATS score."""
     try:
         openai.api_key = os.getenv("OPENAI_API_KEY")
         prompt = (
@@ -43,7 +41,8 @@ def compute_semantic_score(resume: str, jd: str) -> int:
             max_tokens=8,
             temperature=0.1,
         )
-        score = int("".join(filter(str.isdigit, response["choices"][0]["message"]["content"])))
+        content = response["choices"][0]["message"]["content"]
+        score = int("".join(filter(str.isdigit, content)))
         return min(score, 100)
     except Exception as e:
         print(f"Semantic score error (LLM fallback): {e}")
@@ -66,7 +65,6 @@ async def upload_resume(
         user.resume_text = text
         db.add(user)
         await db.commit()
-        # Also update onboarding_data in DB if exists
         onboarding = user.onboarding_data or {}
         onboarding["resume_text"] = text
         user.onboarding_data = onboarding
@@ -76,7 +74,7 @@ async def upload_resume(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- Tailor resume endpoint with match logic ---
+# --- Tailor resume endpoint ---
 
 @router.post("/tailor-resume")
 async def tailor_resume(
@@ -148,7 +146,6 @@ def generate_pdf(text: str) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    # Split lines to avoid overflow
     for line in text.split('\n'):
         pdf.multi_cell(0, 10, line)
     pdf_bytes = pdf.output(dest="S").encode("latin1")
@@ -183,5 +180,3 @@ async def download_resume(
         return StreamingResponse(io.BytesIO(docx_bytes), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"Content-Disposition": f"attachment; filename={filename}"})
     else:
         raise HTTPException(status_code=400, detail="Invalid format. Choose pdf or docx.")
-
-# ---- End of file ----
