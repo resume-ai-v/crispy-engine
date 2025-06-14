@@ -1,7 +1,6 @@
 import os
 import io
 import re
-import openai
 import logging
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Body
@@ -13,6 +12,8 @@ from api.routers.auth_api import get_current_user
 from api.models.user import User
 from docx import Document
 from fpdf import FPDF
+
+import openai
 
 router = APIRouter()
 logging.basicConfig(level=logging.INFO)
@@ -32,22 +33,23 @@ def compute_ats_score(resume: str, jd: str) -> int:
 
 def compute_semantic_score(resume: str, jd: str) -> int:
     try:
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        if not openai.api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
             logging.error("❌ OpenAI API Key missing in environment!")
             return compute_ats_score(resume, jd)
+        client = openai.OpenAI(api_key=api_key)
         prompt = (
             f"Resume:\n{resume}\n\nJob Description:\n{jd}\n\n"
             "Score from 0 to 100 how well this resume fits the job description, "
             "considering skills, responsibilities, and experience. Only output the number."
         )
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=8,
             temperature=0.1,
         )
-        content = response["choices"][0]["message"]["content"]
+        content = response.choices[0].message.content
         numbers = re.findall(r"\d+", content)
         score = int(numbers[0]) if numbers else compute_ats_score(resume, jd)
         return min(score, 100)
@@ -109,9 +111,10 @@ async def tailor_resume(
     original_match = round((ats_score_orig + semantic_score_orig) / 2)
 
     try:
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        if not openai.api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
             raise HTTPException(status_code=500, detail="Missing OpenAI API Key. Contact support.")
+        client = openai.OpenAI(api_key=api_key)
         prompt = (
             "You are an expert resume editor. Given the following resume and job description, "
             f"tailor the resume so it maximizes the candidate's chance of getting this {role} job at {company}. "
@@ -119,7 +122,7 @@ async def tailor_resume(
             "Return only the improved resume text (no extra comments).\n\n"
             f"Resume:\n{resume_text}\n\nJob Description:\n{jd_text}\n\nTailored Resume:"
         )
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a professional ATS resume optimization assistant."},
@@ -128,13 +131,10 @@ async def tailor_resume(
             max_tokens=1200,
             temperature=0.4,
         )
-        tailored_resume = response["choices"][0]["message"]["content"].strip()
+        tailored_resume = response.choices[0].message.content.strip()
         if not tailored_resume or len(tailored_resume) < 100:
             logging.error("OpenAI returned empty or too short tailored resume.")
             raise HTTPException(status_code=500, detail="OpenAI did not return a valid tailored resume.")
-    except openai.error.OpenAIError as oe:
-        logging.error(f"OpenAI error: {oe}")
-        raise HTTPException(status_code=500, detail=f"OpenAI error: {oe}")
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
@@ -164,11 +164,8 @@ def generate_pdf(text: str) -> bytes:
     try:
         pdf.set_font("Arial", size=12)
     except:
-        # fallback font
         pdf.set_font("helvetica", size=12)
-    # Ensure no encoding errors
     for line in text.split('\n'):
-        # Remove unsupported characters
         safe_line = line.encode("latin-1", errors="replace").decode("latin-1")
         pdf.multi_cell(0, 10, safe_line)
     try:
@@ -181,7 +178,6 @@ def generate_pdf(text: str) -> bytes:
 def generate_docx(text: str) -> bytes:
     doc = Document()
     for para in text.split('\n\n'):
-        # Remove nulls/unicode that could break docx
         clean_para = para.replace('\x00', '').strip()
         doc.add_paragraph(clean_para)
     file_stream = io.BytesIO()
@@ -227,5 +223,3 @@ async def download_resume(
         )
     else:
         raise HTTPException(status_code=400, detail="Invalid format. Choose pdf or docx.")
-
-# ---- End of file ----

@@ -30,15 +30,14 @@ logging.basicConfig(level=logging.INFO)
 class InterviewInput(BaseModel):
     resume: str = ""
     jd: str = ""
-    round: str = "hr"  # 'coding', 'system-design', 'hr'
+    round: str = "hr"
 
-# --- Generate Custom GPT-powered Interview Question ---
 def generate_gpt_question(resume, jd, round_type):
     try:
-        openai.api_key = OPENAI_API_KEY
-        if not openai.api_key:
+        if not OPENAI_API_KEY:
             logging.error("Missing OpenAI API Key.")
             raise Exception("Missing OpenAI API Key")
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
         system = "You are a world-class interviewer. Your job is to ask ONE tough and relevant interview question for the specified round. Only output the question, not the answer."
         role_hint = {
             "coding": "coding round (data structures/algorithms)",
@@ -50,7 +49,7 @@ def generate_gpt_question(resume, jd, round_type):
             f"Interview Round: {round_type} ({role_hint.get(round_type, 'general')})\n"
             f"Ask a single relevant interview question for this candidate."
         )
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system},
@@ -60,7 +59,6 @@ def generate_gpt_question(resume, jd, round_type):
             temperature=0.6,
         )
         question = response.choices[0].message.content.strip().replace("\n", " ")
-        # Avoid trailing "Answer:" etc.
         question = question.split("Answer:")[0].strip()
         return question
     except Exception as e:
@@ -71,7 +69,6 @@ def generate_gpt_question(resume, jd, round_type):
             "hr": "Tell me about a challenging project you've worked on and what you learned.",
         }.get(round_type, "Tell me about yourself.")
 
-# --- ElevenLabs Audio Generation ---
 def generate_elevenlabs_audio(text: str) -> str:
     if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
         logging.error("Missing ElevenLabs credentials.")
@@ -99,7 +96,6 @@ def generate_elevenlabs_audio(text: str) -> str:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate ElevenLabs audio: {str(e)}")
 
-# --- D-ID Video Generation with ElevenLabs Audio ---
 def generate_did_video(text: str) -> str:
     if not D_ID_API_KEY or not D_ID_AVATAR_ID or not ELEVENLABS_VOICE_ID:
         logging.error("❌ D-ID or ElevenLabs credentials missing. Set all API keys and avatar/voice IDs.")
@@ -137,9 +133,8 @@ def generate_did_video(text: str) -> str:
         logging.error(f"❌ [D-ID video creation failed] {error_details}")
         raise HTTPException(status_code=500, detail=f"Failed to create D-ID video: {error_details}")
 
-    # --- Poll for the video result ---
     get_url = f"https://api.d-id.com/talks/{talk_id}"
-    for _ in range(30):  # Poll up to 5 minutes (30 * 10s)
+    for _ in range(30):
         try:
             get_response = requests.get(get_url, headers=headers, timeout=30)
             logging.info(f"[D-ID Poll] Status: {get_response.status_code}, Response: {get_response.text}")
@@ -165,19 +160,13 @@ def generate_did_video(text: str) -> str:
     logging.error("[D-ID] Video generation timed out.")
     raise HTTPException(status_code=504, detail="D-ID video generation timed out.")
 
-# ========== Main Interview Start Endpoint ==========
-
 @router.post("/start-interview")
 def start_interview(
     data: InterviewInput,
     db: AsyncSession = Depends(get_async_db),
     user: User = Depends(get_current_user),
 ):
-    """
-    Starts an AI avatar interview and returns GPT-generated question, video_url, and audio_url.
-    """
     try:
-        # --- Auth sanity check ---
         if not user or not getattr(user, "id", None):
             logging.error("Unauthorized: No user/session found.")
             raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing user session.")
@@ -186,9 +175,7 @@ def start_interview(
         question = generate_gpt_question(data.resume, data.jd, round_type)
         script_for_avatar = f"Let me ask you an interview question. {question}"
 
-        # Generate audio (for instant playback)
         audio_url = generate_elevenlabs_audio(script_for_avatar)
-        # Generate video (can take 15–40s on free D-ID)
         video_url = generate_did_video(script_for_avatar)
 
         return {
