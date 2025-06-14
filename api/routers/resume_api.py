@@ -2,6 +2,8 @@ import os
 import io
 import re
 import openai
+import logging
+
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Body
 from fastapi.responses import StreamingResponse
 from utils.resume.extract_text import extract_text_from_file
@@ -13,6 +15,7 @@ from docx import Document
 from fpdf import FPDF
 
 router = APIRouter()
+logging.basicConfig(level=logging.INFO)
 
 # --- Utility functions for scoring ---
 
@@ -31,7 +34,7 @@ def compute_semantic_score(resume: str, jd: str) -> int:
     try:
         openai.api_key = os.getenv("OPENAI_API_KEY")
         if not openai.api_key:
-            print("❌ OpenAI API Key missing in environment!")
+            logging.error("❌ OpenAI API Key missing in environment!")
             return compute_ats_score(resume, jd)
         prompt = (
             f"Resume:\n{resume}\n\nJob Description:\n{jd}\n\n"
@@ -45,10 +48,11 @@ def compute_semantic_score(resume: str, jd: str) -> int:
             temperature=0.1,
         )
         content = response["choices"][0]["message"]["content"]
-        score = int("".join(filter(str.isdigit, content)))
+        numbers = re.findall(r"\d+", content)
+        score = int(numbers[0]) if numbers else compute_ats_score(resume, jd)
         return min(score, 100)
     except Exception as e:
-        print(f"Semantic score error (LLM fallback): {e}")
+        logging.error(f"Semantic score error (LLM fallback): {e}")
         return compute_ats_score(resume, jd)
 
 # --- File upload endpoint ---
@@ -75,7 +79,8 @@ async def upload_resume(
         await db.commit()
         return {"resume_text": text}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.error(f"Error in upload_resume: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
 
 # --- Tailor resume endpoint ---
 
@@ -85,10 +90,6 @@ async def tailor_resume(
     db: AsyncSession = Depends(get_async_db),
     user: User = Depends(get_current_user),
 ):
-    """
-    Tailors a user's resume to a specific job description using OpenAI GPT.
-    Returns tailored resume and both original and tailored match scores.
-    """
     resume_text = payload.get("resume") or user.resume_text
     jd_text = payload.get("jd")
     role = payload.get("role", "Generic")
@@ -96,7 +97,6 @@ async def tailor_resume(
     if not resume_text or not jd_text:
         raise HTTPException(status_code=400, detail="Missing resume or job description.")
 
-    # Input length check for OpenAI
     max_len = 6000
     if len(resume_text) > max_len or len(jd_text) > max_len:
         raise HTTPException(
@@ -104,12 +104,10 @@ async def tailor_resume(
             detail=f"Resume or JD too long (>{max_len} chars). Please shorten and try again."
         )
 
-    # Score original resume
     ats_score_orig = compute_ats_score(resume_text, jd_text)
     semantic_score_orig = compute_semantic_score(resume_text, jd_text)
     original_match = round((ats_score_orig + semantic_score_orig) / 2)
 
-    # Tailor using OpenAI GPT
     try:
         openai.api_key = os.getenv("OPENAI_API_KEY")
         if not openai.api_key:
@@ -131,14 +129,16 @@ async def tailor_resume(
             temperature=0.4,
         )
         tailored_resume = response["choices"][0]["message"]["content"].strip()
+        if not tailored_resume or len(tailored_resume) < 100:
+            logging.error("OpenAI returned empty or too short tailored resume.")
+            raise HTTPException(status_code=500, detail="OpenAI did not return a valid tailored resume.")
     except openai.error.OpenAIError as oe:
-        print("OpenAI error:", oe)
+        logging.error(f"OpenAI error: {oe}")
         raise HTTPException(status_code=500, detail=f"OpenAI error: {oe}")
     except Exception as e:
-        print("Unexpected error:", e)
+        logging.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
-    # Score tailored resume
     ats_score_tailored = compute_ats_score(tailored_resume, jd_text)
     semantic_score_tailored = compute_semantic_score(tailored_resume, jd_text)
     tailored_match = round((ats_score_tailored + semantic_score_tailored) / 2)
@@ -161,20 +161,37 @@ async def tailor_resume(
 def generate_pdf(text: str) -> bytes:
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    try:
+        pdf.set_font("Arial", size=12)
+    except:
+        # fallback font
+        pdf.set_font("helvetica", size=12)
+    # Ensure no encoding errors
     for line in text.split('\n'):
-        pdf.multi_cell(0, 10, line)
-    pdf_bytes = pdf.output(dest="S").encode("latin1")
-    return pdf_bytes
+        # Remove unsupported characters
+        safe_line = line.encode("latin-1", errors="replace").decode("latin-1")
+        pdf.multi_cell(0, 10, safe_line)
+    try:
+        pdf_bytes = pdf.output(dest="S").encode("latin1")
+        return pdf_bytes
+    except Exception as e:
+        logging.error(f"PDF generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
 
 def generate_docx(text: str) -> bytes:
     doc = Document()
     for para in text.split('\n\n'):
-        doc.add_paragraph(para)
+        # Remove nulls/unicode that could break docx
+        clean_para = para.replace('\x00', '').strip()
+        doc.add_paragraph(clean_para)
     file_stream = io.BytesIO()
-    doc.save(file_stream)
-    file_stream.seek(0)
-    return file_stream.read()
+    try:
+        doc.save(file_stream)
+        file_stream.seek(0)
+        return file_stream.read()
+    except Exception as e:
+        logging.error(f"DOCX generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"DOCX generation failed: {e}")
 
 @router.post("/download-resume")
 async def download_resume(
@@ -185,15 +202,29 @@ async def download_resume(
     fmt = payload.get("format", "pdf").lower()
     filename = "AI_Resume." + fmt
 
-    if not text:
+    if not text or not text.strip():
         raise HTTPException(status_code=400, detail="No resume text provided.")
 
     if fmt == "pdf":
         pdf_bytes = generate_pdf(text)
-        return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={filename}"})
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(len(pdf_bytes))
+            }
+        )
     elif fmt == "docx":
         docx_bytes = generate_docx(text)
-        return StreamingResponse(io.BytesIO(docx_bytes), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"Content-Disposition": f"attachment; filename={filename}"})
+        return StreamingResponse(
+            io.BytesIO(docx_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(len(docx_bytes))
+            }
+        )
     else:
         raise HTTPException(status_code=400, detail="Invalid format. Choose pdf or docx.")
 

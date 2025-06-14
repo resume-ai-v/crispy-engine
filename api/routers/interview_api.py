@@ -34,9 +34,11 @@ class InterviewInput(BaseModel):
 
 # --- Generate Custom GPT-powered Interview Question ---
 def generate_gpt_question(resume, jd, round_type):
-    """Generate an interview question using GPT, tailored to the resume, JD, and round."""
     try:
         openai.api_key = OPENAI_API_KEY
+        if not openai.api_key:
+            logging.error("Missing OpenAI API Key.")
+            raise Exception("Missing OpenAI API Key")
         system = "You are a world-class interviewer. Your job is to ask ONE tough and relevant interview question for the specified round. Only output the question, not the answer."
         role_hint = {
             "coding": "coding round (data structures/algorithms)",
@@ -71,10 +73,8 @@ def generate_gpt_question(resume, jd, round_type):
 
 # --- ElevenLabs Audio Generation ---
 def generate_elevenlabs_audio(text: str) -> str:
-    """
-    Generates TTS audio using ElevenLabs and returns the audio file as a data URL (base64-encoded MP3).
-    """
     if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
+        logging.error("Missing ElevenLabs credentials.")
         raise HTTPException(status_code=500, detail="Missing ElevenLabs credentials.")
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
@@ -94,7 +94,6 @@ def generate_elevenlabs_audio(text: str) -> str:
         if audio_resp.status_code != 200:
             logging.error(f"ElevenLabs audio error: {audio_resp.text}")
             raise Exception(audio_resp.text)
-        # Save as base64 data URL for direct use in <audio>
         audio_b64 = base64.b64encode(audio_resp.content).decode("utf-8")
         return f"data:audio/mp3;base64,{audio_b64}"
     except Exception as e:
@@ -102,10 +101,6 @@ def generate_elevenlabs_audio(text: str) -> str:
 
 # --- D-ID Video Generation with ElevenLabs Audio ---
 def generate_did_video(text: str) -> str:
-    """
-    Generates a video using D-ID's API and ElevenLabs, with logging for debugging.
-    Returns the video URL, or raises HTTPException on error.
-    """
     if not D_ID_API_KEY or not D_ID_AVATAR_ID or not ELEVENLABS_VOICE_ID:
         logging.error("❌ D-ID or ElevenLabs credentials missing. Set all API keys and avatar/voice IDs.")
         raise HTTPException(status_code=500, detail="D-ID or ElevenLabs credentials missing on server.")
@@ -182,13 +177,18 @@ def start_interview(
     Starts an AI avatar interview and returns GPT-generated question, video_url, and audio_url.
     """
     try:
+        # --- Auth sanity check ---
+        if not user or not getattr(user, "id", None):
+            logging.error("Unauthorized: No user/session found.")
+            raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing user session.")
+
         round_type = data.round if data.round in {"coding", "system-design", "hr"} else "hr"
         question = generate_gpt_question(data.resume, data.jd, round_type)
         script_for_avatar = f"Let me ask you an interview question. {question}"
 
         # Generate audio (for instant playback)
         audio_url = generate_elevenlabs_audio(script_for_avatar)
-        # Generate video (async for user experience: play audio, show "Video generating...", then show video)
+        # Generate video (can take 15–40s on free D-ID)
         video_url = generate_did_video(script_for_avatar)
 
         return {
