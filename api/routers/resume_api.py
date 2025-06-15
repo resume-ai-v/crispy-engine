@@ -57,34 +57,54 @@ def compute_semantic_score(resume: str, jd: str) -> int:
         logging.error(f"Semantic score error (LLM fallback): {e}")
         return compute_ats_score(resume, jd)
 
-# --- Tailor resume endpoint (robust version) ---
+# --- File upload endpoint ---
+@router.post("/upload-resume")
+async def upload_resume(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_async_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        contents = await file.read()
+        temp_path = f"/tmp/{file.filename}"
+        with open(temp_path, "wb") as f:
+            f.write(contents)
+        text = extract_text_from_file(open(temp_path, "rb"), file.filename)
+        user.resume_text = text
+        db.add(user)
+        await db.commit()
+        onboarding = user.onboarding_data or {}
+        onboarding["resume_text"] = text
+        user.onboarding_data = onboarding
+        db.add(user)
+        await db.commit()
+        return {"resume_text": text}
+    except Exception as e:
+        logging.error(f"Error in upload_resume: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+
+# --- Tailor resume endpoint ---
 @router.post("/tailor-resume")
 async def tailor_resume(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_async_db),
     user: User = Depends(get_current_user),
 ):
-    resume_text = payload.get("resume") or getattr(user, "resume_text", None)
+    resume_text = payload.get("resume")
     jd_text = payload.get("jd")
     role = payload.get("role", "Generic")
     company = payload.get("company", "Unknown")
 
-    logging.info(
-        f"[Tailor Debug] User: {getattr(user, 'email', None)}, "
-        f"Resume present: {bool(resume_text)}, JD present: {bool(jd_text)}, "
-        f"Payload: {payload}"
-    )
+    logging.info(f"[Tailor Resume] User: {getattr(user, 'email', None)} | Resume present: {resume_text is not None} | JD present: {jd_text is not None}")
 
-    if not resume_text:
-        logging.error("400: No resume text provided.")
-        raise HTTPException(status_code=400, detail="No resume text provided.")
-    if not jd_text:
-        logging.error("400: No job description provided.")
-        raise HTTPException(status_code=400, detail="No job description provided.")
+    # --- Strong validation ---
+    if not resume_text or not isinstance(resume_text, str) or not resume_text.strip():
+        raise HTTPException(status_code=400, detail="Missing or empty resume.")
+    if not jd_text or not isinstance(jd_text, str) or not jd_text.strip():
+        raise HTTPException(status_code=400, detail="Missing or empty job description.")
 
     max_len = 6000
     if len(resume_text) > max_len or len(jd_text) > max_len:
-        logging.error(f"400: Resume or JD too long ({len(resume_text)} or {len(jd_text)} chars)")
         raise HTTPException(
             status_code=400,
             detail=f"Resume or JD too long (>{max_len} chars). Please shorten and try again."
@@ -97,7 +117,6 @@ async def tailor_resume(
     try:
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            logging.error("500: Missing OpenAI API Key.")
             raise HTTPException(status_code=500, detail="Missing OpenAI API Key. Contact support.")
         client = openai.OpenAI(api_key=api_key)
         prompt = (
@@ -118,7 +137,7 @@ async def tailor_resume(
         )
         tailored_resume = response.choices[0].message.content.strip()
         if not tailored_resume or len(tailored_resume) < 100:
-            logging.error("500: OpenAI returned empty or too short tailored resume.")
+            logging.error("OpenAI returned empty or too short tailored resume.")
             raise HTTPException(status_code=500, detail="OpenAI did not return a valid tailored resume.")
     except Exception as e:
         logging.error(f"Unexpected error in OpenAI tailoring: {e}")
@@ -128,16 +147,11 @@ async def tailor_resume(
     semantic_score_tailored = compute_semantic_score(tailored_resume, jd_text)
     tailored_match = round((ats_score_tailored + semantic_score_tailored) / 2)
 
-    # Persist tailored resume to user (optional)
+    # Save tailored resume (optional)
     if hasattr(user, "tailored_resume"):
         user.tailored_resume = tailored_resume
         db.add(user)
         await db.commit()
-
-    logging.info(
-        f"[Tailor Success] User: {getattr(user, 'email', None)}, "
-        f"Original: {original_match}%, Tailored: {tailored_match}%"
-    )
 
     return {
         "tailored_resume": tailored_resume,
@@ -146,3 +160,70 @@ async def tailor_resume(
         "ats_score": ats_score_tailored,
         "semantic_score": semantic_score_tailored,
     }
+
+# --- PDF and DOCX Download ---
+def generate_pdf(text: str) -> bytes:
+    pdf = FPDF()
+    pdf.add_page()
+    try:
+        pdf.set_font("Arial", size=12)
+    except:
+        pdf.set_font("helvetica", size=12)
+    for line in text.split('\n'):
+        safe_line = line.encode("latin-1", errors="replace").decode("latin-1")
+        pdf.multi_cell(0, 10, safe_line)
+    try:
+        pdf_bytes = pdf.output(dest="S").encode("latin1")
+        return pdf_bytes
+    except Exception as e:
+        logging.error(f"PDF generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
+
+def generate_docx(text: str) -> bytes:
+    doc = Document()
+    for para in text.split('\n\n'):
+        clean_para = para.replace('\x00', '').strip()
+        doc.add_paragraph(clean_para)
+    file_stream = io.BytesIO()
+    try:
+        doc.save(file_stream)
+        file_stream.seek(0)
+        return file_stream.read()
+    except Exception as e:
+        logging.error(f"DOCX generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"DOCX generation failed: {e}")
+
+@router.post("/download-resume")
+async def download_resume(
+    payload: dict = Body(...),
+    user: User = Depends(get_current_user),
+):
+    text = payload.get("resume") or getattr(user, "resume_text", None)
+    fmt = payload.get("format", "pdf").lower()
+    filename = "AI_Resume." + fmt
+
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="No resume text provided.")
+
+    if fmt == "pdf":
+        pdf_bytes = generate_pdf(text)
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(len(pdf_bytes))
+            }
+        )
+    elif fmt == "docx":
+        docx_bytes = generate_docx(text)
+        return StreamingResponse(
+            io.BytesIO(docx_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(len(docx_bytes))
+            }
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Invalid format. Choose pdf or docx.")
