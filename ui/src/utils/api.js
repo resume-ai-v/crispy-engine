@@ -129,13 +129,29 @@ export const downloadDOCX = async (resumeText) => {
   return res.blob();
 };
 
-// --- Tailor Resume ---
+// --- Tailor Resume (auto-trim to 6000 chars) ---
+const MAX_TAILOR_LENGTH = 6000;
+function trimToLength(text, maxLen = MAX_TAILOR_LENGTH) {
+  if (!text) return "";
+  return text.length > maxLen ? text.slice(0, maxLen) : text;
+}
+
 export const tailorResume = async (resume, jd, role = "Generic", company = "Unknown") => {
-  // Defensive checks
   if (!resume || !resume.trim()) throw new Error("No resume provided for tailoring.");
   if (!jd || !jd.trim()) throw new Error("No job description provided for tailoring.");
 
-  const payload = { resume, jd, role, company };
+  // Auto-trim
+  const safeResume = trimToLength(resume);
+  const safeJD = trimToLength(jd);
+
+  // Warn user if any trimming occurred
+  if (resume.length > MAX_TAILOR_LENGTH || jd.length > MAX_TAILOR_LENGTH) {
+    alert(
+      "Resume or Job Description was too long and has been automatically trimmed to 6000 characters for tailoring. For best results, consider making them shorter and more focused."
+    );
+  }
+
+  const payload = { resume: safeResume, jd: safeJD, role, company };
   if (process.env.NODE_ENV === "development") {
     console.log("[tailorResume] payload:", payload);
   }
