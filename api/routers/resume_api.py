@@ -90,34 +90,31 @@ async def tailor_resume(
     db: AsyncSession = Depends(get_async_db),
     user: User = Depends(get_current_user),
 ):
-    resume_text = payload.get("resume")
-    jd_text = payload.get("jd")
-    role = payload.get("role", "Generic")
-    company = payload.get("company", "Unknown")
-
-    logging.info(f"[Tailor Resume] User: {getattr(user, 'email', None)} | Resume present: {resume_text is not None} | JD present: {jd_text is not None}")
-
-    # --- Strong validation ---
-    if not resume_text or not isinstance(resume_text, str) or not resume_text.strip():
-        raise HTTPException(status_code=400, detail="Missing or empty resume.")
-    if not jd_text or not isinstance(jd_text, str) or not jd_text.strip():
-        raise HTTPException(status_code=400, detail="Missing or empty job description.")
-
-    max_len = 6000
-    if len(resume_text) > max_len or len(jd_text) > max_len:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Resume or JD too long (>{max_len} chars). Please shorten and try again."
-        )
-
-    ats_score_orig = compute_ats_score(resume_text, jd_text)
-    semantic_score_orig = compute_semantic_score(resume_text, jd_text)
-    original_match = round((ats_score_orig + semantic_score_orig) / 2)
-
     try:
+        resume_text = payload.get("resume") or getattr(user, "resume_text", None)
+        jd_text = payload.get("jd")
+        role = payload.get("role", "Generic")
+        company = payload.get("company", "Unknown")
+        logging.info(f"[Tailor Debug] User: {user.email if user else 'unknown'}, Resume present: {bool(resume_text)}, JD present: {bool(jd_text)}, Payload: {payload}")
+
+        if not resume_text or not jd_text:
+            raise HTTPException(status_code=400, detail="Missing resume or job description.")
+
+        # ---- Trim if too long (auto) ----
+        max_len = 6000
+        if len(resume_text) > max_len:
+            resume_text = resume_text[:max_len]
+        if len(jd_text) > max_len:
+            jd_text = jd_text[:max_len]
+
+        ats_score_orig = compute_ats_score(resume_text, jd_text)
+        semantic_score_orig = compute_semantic_score(resume_text, jd_text)
+        original_match = round((ats_score_orig + semantic_score_orig) / 2)
+
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise HTTPException(status_code=500, detail="Missing OpenAI API Key. Contact support.")
+
         client = openai.OpenAI(api_key=api_key)
         prompt = (
             "You are an expert resume editor. Given the following resume and job description, "
@@ -126,40 +123,47 @@ async def tailor_resume(
             "Return only the improved resume text (no extra comments).\n\n"
             f"Resume:\n{resume_text}\n\nJob Description:\n{jd_text}\n\nTailored Resume:"
         )
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a professional ATS resume optimization assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1200,
-            temperature=0.4,
-        )
-        tailored_resume = response.choices[0].message.content.strip()
-        if not tailored_resume or len(tailored_resume) < 100:
-            logging.error("OpenAI returned empty or too short tailored resume.")
-            raise HTTPException(status_code=500, detail="OpenAI did not return a valid tailored resume.")
+
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a professional ATS resume optimization assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1200,
+                temperature=0.4,
+            )
+            tailored_resume = response.choices[0].message.content.strip()
+            if not tailored_resume or len(tailored_resume) < 100:
+                logging.error("OpenAI returned empty or too short tailored resume.")
+                raise HTTPException(status_code=500, detail="OpenAI did not return a valid tailored resume.")
+        except Exception as e:
+            logging.error(f"OpenAI tailoring error: {e}")
+            raise HTTPException(status_code=500, detail=f"OpenAI error: {e}")
+
+        ats_score_tailored = compute_ats_score(tailored_resume, jd_text)
+        semantic_score_tailored = compute_semantic_score(tailored_resume, jd_text)
+        tailored_match = round((ats_score_tailored + semantic_score_tailored) / 2)
+
+        if hasattr(user, "tailored_resume"):
+            user.tailored_resume = tailored_resume
+            db.add(user)
+            await db.commit()
+
+        return {
+            "tailored_resume": tailored_resume,
+            "original_match": original_match,
+            "tailored_match": tailored_match,
+            "ats_score": ats_score_tailored,
+            "semantic_score": semantic_score_tailored,
+        }
+
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        logging.error(f"Unexpected error in OpenAI tailoring: {e}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
-
-    ats_score_tailored = compute_ats_score(tailored_resume, jd_text)
-    semantic_score_tailored = compute_semantic_score(tailored_resume, jd_text)
-    tailored_match = round((ats_score_tailored + semantic_score_tailored) / 2)
-
-    # Save tailored resume (optional)
-    if hasattr(user, "tailored_resume"):
-        user.tailored_resume = tailored_resume
-        db.add(user)
-        await db.commit()
-
-    return {
-        "tailored_resume": tailored_resume,
-        "original_match": original_match,
-        "tailored_match": tailored_match,
-        "ats_score": ats_score_tailored,
-        "semantic_score": semantic_score_tailored,
-    }
+        logging.error(f"[TailorResume/ServerError] {e}")
+        raise HTTPException(status_code=500, detail=f"Server error: {e}")
 
 # --- PDF and DOCX Download ---
 def generate_pdf(text: str) -> bytes:
