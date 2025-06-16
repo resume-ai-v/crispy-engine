@@ -4,10 +4,17 @@ import re
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# --- Start of Changes ---
+
+# Initialize the client with the API key
+# This is the new required way for openai > 1.0.0
 API_KEY = os.getenv("OPENAI_API_KEY")
 if not API_KEY:
     raise RuntimeError("Missing OPENAI_API_KEY in environment.")
 client = openai.OpenAI(api_key=API_KEY)
+
+# --- End of Changes ---
 
 def clean_match_summary(summary: str) -> str:
     """
@@ -42,6 +49,8 @@ Job Description:
 Return only the one‐line match string.
 """
     try:
+        # --- Start of Changes ---
+        # Use the client to create the chat completion
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
@@ -49,6 +58,9 @@ Return only the one‐line match string.
             max_tokens=150,
         )
         result = response.choices[0].message.content.strip()
+        # --- End of Changes ---
         return clean_match_summary(result)
-    except Exception:
+    except Exception as e:
+        # It's good practice to log the actual error
+        print(f"An error occurred while matching resume to JD: {e}")
         return "0% Match – Unable to compute match at this time."
