@@ -140,11 +140,9 @@ export const tailorResume = async (resume, jd, role = "Generic", company = "Unkn
   if (!resume || !resume.trim()) throw new Error("No resume provided for tailoring.");
   if (!jd || !jd.trim()) throw new Error("No job description provided for tailoring.");
 
-  // Auto-trim
   const safeResume = trimToLength(resume);
   const safeJD = trimToLength(jd);
 
-  // Warn user if any trimming occurred
   if (resume.length > MAX_TAILOR_LENGTH || jd.length > MAX_TAILOR_LENGTH) {
     alert(
       "Resume or Job Description was too long and has been automatically trimmed to 6000 characters for tailoring. For best results, consider making them shorter and more focused."
@@ -152,21 +150,31 @@ export const tailorResume = async (resume, jd, role = "Generic", company = "Unkn
   }
 
   const payload = { resume: safeResume, jd: safeJD, role, company };
-  if (process.env.NODE_ENV === "development") {
-    console.log("[tailorResume] payload:", payload);
-  }
 
   const res = await fetch(`${API_BASE}/tailor-resume`, {
     method: "POST",
     headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify(payload),
   });
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+    let err = {};
+    try {
+      err = await res.json();
+    } catch {}
+    if (
+      res.status === 429 ||
+      (err.detail && err.detail.toLowerCase().includes("quota"))
+    ) {
+      throw new Error(
+        "AI tailoring service is temporarily unavailable (OpenAI quota exceeded or too many requests). Please try again later."
+      );
+    }
     throw new Error(err.detail || "Tailor failed");
   }
   return await res.json();
 };
+
 
 // --- Fetch Jobs ---
 export const fetchJobs = async (resume, preferredRoles = [], preferredCities = [], employmentTypes = []) => {

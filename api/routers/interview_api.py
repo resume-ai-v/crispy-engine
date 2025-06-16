@@ -7,20 +7,13 @@ import base64
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from dotenv import load_dotenv
-
-# --- Start of Changes ---
-# Use the correct async session and dependency from the database extension
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.extensions.db import get_async_db
-# --- End of Changes ---
-
 from api.routers.auth_api import get_current_user
 from api.models.user import User
-
 import openai
 
 load_dotenv()
-
 router = APIRouter()
 
 D_ID_API_KEY = os.getenv("D_ID_API_KEY")
@@ -31,11 +24,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 logging.basicConfig(level=logging.INFO)
 
-
 class InterviewInput(BaseModel):
     jd: str
     round: str = "hr"
-
 
 def generate_gpt_question(resume, jd, round_type):
     try:
@@ -69,7 +60,7 @@ def generate_gpt_question(resume, jd, round_type):
     except openai.RateLimitError as e:
         logging.error(f"OpenAI Rate Limit Error (Quota Exceeded) during question generation: {e}")
         raise HTTPException(status_code=429,
-                            detail="You have exceeded your OpenAI API quota. Please check your plan and billing details.")
+                            detail="AI interview question service is temporarily unavailable (OpenAI quota exceeded or too many requests). Please try again later.")
     except Exception as e:
         logging.error(f"GPT interview question error: {e}")
         return {
@@ -77,7 +68,6 @@ def generate_gpt_question(resume, jd, round_type):
             "system-design": "How would you design a scalable URL shortening service like bit.ly?",
             "hr": "Tell me about a challenging project you've worked on and what you learned.",
         }.get(round_type, "Tell me about yourself.")
-
 
 def generate_elevenlabs_audio(text: str) -> str:
     if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
@@ -105,12 +95,16 @@ def generate_elevenlabs_audio(text: str) -> str:
     except requests.exceptions.RequestException as e:
         error_detail = e.response.text if e.response else str(e)
         logging.error(f"ElevenLabs audio error: {error_detail}")
-        # Provide a more specific error for flagged accounts
         if "detected_unusual_activity" in error_detail:
             raise HTTPException(status_code=403,
                                 detail="Your ElevenLabs account has been flagged for unusual activity. Please check your account status.")
+        # --- NEW: Handle 429 or service unavailable
+        if "429" in error_detail or "quota" in error_detail.lower():
+            raise HTTPException(
+                status_code=429,
+                detail="AI voice service is temporarily unavailable (ElevenLabs quota exceeded or too many requests). Please try again later."
+            )
         raise HTTPException(status_code=500, detail=f"Failed to generate ElevenLabs audio: {error_detail}")
-
 
 def generate_did_video(text: str) -> str:
     if not D_ID_API_KEY or not D_ID_AVATAR_ID or not ELEVENLABS_VOICE_ID:
@@ -144,12 +138,17 @@ def generate_did_video(text: str) -> str:
     except requests.exceptions.RequestException as e:
         error_details = e.response.text if e.response else str(e)
         logging.error(f"❌ [D-ID video creation failed] {error_details}")
+        # --- NEW: Handle 429 or quota errors for D-ID as well
+        if "429" in error_details or "quota" in error_details.lower():
+            raise HTTPException(
+                status_code=429,
+                detail="AI avatar video service is temporarily unavailable (D-ID quota exceeded or too many requests). Please try again later."
+            )
         raise HTTPException(status_code=500, detail=f"Failed to create D-ID video: {error_details}")
 
     get_url = f"https://api.d-id.com/talks/{talk_id}"
     get_headers = {"Authorization": f"Bearer {D_ID_API_KEY}"}
 
-    # Poll for 5 minutes (30 * 10s)
     for _ in range(30):
         try:
             get_response = requests.get(get_url, headers=get_headers, timeout=30)
@@ -171,17 +170,12 @@ def generate_did_video(text: str) -> str:
 
     raise HTTPException(status_code=504, detail="D-ID video generation timed out.")
 
-
 @router.post("/start-interview")
-# --- Start of Changes ---
-# The endpoint must be async to work with async dependencies.
 async def start_interview(
         data: InterviewInput,
-        # Use the async database session.
         db: AsyncSession = Depends(get_async_db),
         user: User = Depends(get_current_user),
 ):
-    # --- End of Changes ---
     try:
         if not user or not getattr(user, "id", None):
             raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing user session.")
@@ -195,8 +189,26 @@ async def start_interview(
         question = generate_gpt_question(resume_text, data.jd, round_type)
         script_for_avatar = f"Let me ask you an interview question. {question}"
 
-        audio_url = generate_elevenlabs_audio(script_for_avatar)
-        video_url = generate_did_video(script_for_avatar)
+        # --- Key Change: wrap all downstream AI calls with specific error handling!
+        try:
+            audio_url = generate_elevenlabs_audio(script_for_avatar)
+        except HTTPException as e:
+            if e.status_code == 429:
+                raise HTTPException(
+                    status_code=429,
+                    detail="AI voice service is temporarily unavailable (ElevenLabs quota exceeded or too many requests). Please try again later."
+                )
+            raise
+
+        try:
+            video_url = generate_did_video(script_for_avatar)
+        except HTTPException as e:
+            if e.status_code == 429:
+                raise HTTPException(
+                    status_code=429,
+                    detail="AI avatar video service is temporarily unavailable (D-ID quota exceeded or too many requests). Please try again later."
+                )
+            raise
 
         return {
             "question": question,

@@ -4,7 +4,7 @@ import re
 import logging
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Body
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from utils.resume.extract_text import extract_text_from_file
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.extensions.db import get_async_db
@@ -12,12 +12,10 @@ from api.routers.auth_api import get_current_user
 from api.models.user import User
 from docx import Document
 from fpdf import FPDF
-
 import openai
 
 router = APIRouter()
 logging.basicConfig(level=logging.INFO)
-
 
 # --- Utility: Simple ATS Score
 def compute_ats_score(resume: str, jd: str) -> int:
@@ -30,7 +28,6 @@ def compute_ats_score(resume: str, jd: str) -> int:
     match_count = sum(1 for word in jd_keywords if word in resume_words)
     ats_score = int((match_count / len(jd_keywords)) * 100)
     return min(ats_score, 100)
-
 
 # --- Utility: Semantic Score (OpenAI v1.x syntax)
 def compute_semantic_score(resume: str, jd: str) -> int:
@@ -57,13 +54,13 @@ def compute_semantic_score(resume: str, jd: str) -> int:
         return min(score, 100)
     except openai.RateLimitError as e:
         logging.error(f"OpenAI Rate Limit Error (Quota Exceeded) in semantic score: {e}")
-        # This custom exception will be caught by the main endpoint
-        raise HTTPException(status_code=429,
-                            detail="You have exceeded your OpenAI API quota. Please check your plan and billing details.")
+        raise HTTPException(
+            status_code=429,
+            detail="You have exceeded your OpenAI API quota. Please check your plan and billing details."
+        )
     except Exception as e:
         logging.error(f"Semantic score error (LLM fallback): {e}")
         return compute_ats_score(resume, jd)
-
 
 # --- File upload endpoint ---
 @router.post("/upload-resume")
@@ -74,7 +71,6 @@ async def upload_resume(
 ):
     try:
         contents = await file.read()
-        # Ensure the tmp directory exists
         if not os.path.exists("/tmp"):
             os.makedirs("/tmp")
         temp_path = f"/tmp/{file.filename}"
@@ -84,12 +80,11 @@ async def upload_resume(
         with open(temp_path, "rb") as f_read:
             text = extract_text_from_file(f_read, file.filename)
 
-        os.remove(temp_path)  # Clean up the temporary file
+        os.remove(temp_path)
 
         user.resume_text = text
         db.add(user)
         await db.commit()
-        # Also update onboarding data if it exists
         if user.onboarding_data is not None:
             onboarding = user.onboarding_data or {}
             onboarding["resume_text"] = text
@@ -101,7 +96,6 @@ async def upload_resume(
     except Exception as e:
         logging.error(f"Error in upload_resume: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Resume upload failed: {e}")
-
 
 # --- Tailor resume endpoint ---
 @router.post("/tailor-resume")
@@ -128,7 +122,13 @@ async def tailor_resume(
             jd_text = jd_text[:max_len]
 
         ats_score_orig = compute_ats_score(resume_text, jd_text)
-        semantic_score_orig = compute_semantic_score(resume_text, jd_text)
+        try:
+            semantic_score_orig = compute_semantic_score(resume_text, jd_text)
+        except HTTPException as he:
+            if he.status_code == 429:
+                semantic_score_orig = ats_score_orig
+            else:
+                raise
         original_match = round((ats_score_orig + semantic_score_orig) / 2)
 
         api_key = os.getenv("OPENAI_API_KEY")
@@ -146,7 +146,7 @@ async def tailor_resume(
 
         try:
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo-16k",  # Use a model with a larger context window
+                model="gpt-3.5-turbo-16k",
                 messages=[
                     {"role": "system", "content": "You are a professional ATS resume optimization assistant."},
                     {"role": "user", "content": prompt}
@@ -160,14 +160,22 @@ async def tailor_resume(
                 raise HTTPException(status_code=500, detail="The AI failed to generate a valid tailored resume.")
         except openai.RateLimitError as e:
             logging.error(f"OpenAI Rate Limit Error (Quota Exceeded) during tailoring: {e}")
-            raise HTTPException(status_code=429,
-                                detail="You've exceeded your OpenAI API quota. Please check your plan and billing details.")
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "AI tailoring service is temporarily unavailable (quota exceeded or too many requests). Please try again later. [OpenAI Quota]"}
+            )
         except Exception as e:
             logging.error(f"OpenAI tailoring error: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred with the AI service: {e}")
 
         ats_score_tailored = compute_ats_score(tailored_resume, jd_text)
-        semantic_score_tailored = compute_semantic_score(tailored_resume, jd_text)
+        try:
+            semantic_score_tailored = compute_semantic_score(tailored_resume, jd_text)
+        except HTTPException as he:
+            if he.status_code == 429:
+                semantic_score_tailored = ats_score_tailored
+            else:
+                raise
         tailored_match = round((ats_score_tailored + semantic_score_tailored) / 2)
 
         if hasattr(user, "tailored_resume"):
@@ -188,28 +196,23 @@ async def tailor_resume(
         logging.error(f"[TailorResume/ServerError] {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"An unexpected server error occurred: {e}")
 
-
 # --- PDF and DOCX Download ---
 def generate_pdf(text: str) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=11)
-    # Replace special characters that are not in latin-1
     text = text.encode('latin-1', 'replace').decode('latin-1')
     pdf.multi_cell(0, 5, text)
     return pdf.output(dest='S').encode('latin-1')
 
-
 def generate_docx(text: str) -> bytes:
     doc = Document()
-    # Replace any null characters which can cause errors
     text = text.replace('\x00', '')
     doc.add_paragraph(text)
     file_stream = io.BytesIO()
     doc.save(file_stream)
     file_stream.seek(0)
     return file_stream.read()
-
 
 @router.post("/download-resume")
 async def download_resume(
